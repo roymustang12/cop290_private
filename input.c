@@ -10,13 +10,6 @@
 
 
 
-typedef struct operand {
-    int type_flag; // 0 for integer constants, 1 for cell references
-    union {
-        int constant;
-        int* cell_operand;
-    } operand_value;
-} operand;
 
 
 int operationID;
@@ -29,7 +22,7 @@ operand (*formula)[];
 // Function Prototypes
 
 void parseCellName(const char* cellName, int* row, int* col);
-void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols,bool *disable_output);
+void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols);
 int isArithmeticExpression(const char* expression);
 int isFunction(const char* expression);
 
@@ -110,7 +103,7 @@ void parseCellName(const char* cellName, int* row, int* col) {
 }
 
 // Parse input command
-void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* disable_output) {
+void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols) {
     char cellName[16];
     char expression[128];
     
@@ -125,15 +118,15 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
             return;
         }
 
-        if (isdigit(expression[0]) || expression[0] == '-' || expression[0] == '+'||(isalpha(expression[0])&& !strchr(expression,'(')) ) {
-            if(!isaplha(expression) && !isArithmeticExpression(expression+1)){
+        if (isdigit(expression[0]) || expression[0] == '-' || expression[0] == '+'||( contains_alphabet(expression[0])&& !strchr(expression,'(')) ) {
+            if(! contains_alphabet(expression) && !isArithmeticExpression(expression+1)){
                 count_operands=1;
-                formula=(operand*)malloc(sizeof(operand));
+                formula=(operand (*)[])malloc(sizeof(operand));
                 (*formula)[0].type_flag = 0; // Constant
                 (*formula)[0].operand_value.constant = atoi(expression);
                 operationID = 1; // Cell assignment with a constant
             }  
-            else if (isaplha(expression) && !isArithmeticExpression(expression+1))  {
+            else if ( contains_alphabet(expression) && !isArithmeticExpression(expression+1))  {
                 int row1,col1;
                 parseCellName(cellName, &row1, &col1);
                 if (row1 <= 0 || row1 > rows || col1 <= 0 || col1 > cols) {
@@ -147,9 +140,9 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
                 operationID = 2; // Cell assignment with a constant
 
             }  
-            else if (isaplha(expression) && isArithmeticExpression(expression+1)) {
+            else if ( contains_alphabet(expression) && isArithmeticExpression(expression+1)) {
                 count_operands=2;
-                formula=(operand*)malloc(sizeof(operand)*2);
+                formula=(operand (*)[])malloc(sizeof(operand)*2);
                 char operand1[16], operand2[16], op;
                 if (!(expression[0]=='+'|| expression[0]=='-')){
 
@@ -161,7 +154,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
                             (*formula)[0].type_flag = 1; // Constant
                             (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
                             
-                            operationID = AssignValue(&op); // Cell assignment with a constant  // remember here emre ko operation id assignment karna hai with +,-,/,*
+                            operationID = AssignValue(&op); // Cell assignment with a constant  
                             
                         } else {
                             (*formula)[0].type_flag = 0; // Constant
@@ -196,7 +189,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
                         
                     } else {
                         int value=atoi(operand1);
-                        if(expression[0]=="-"){
+                        if(expression[0]=='-'){
                             value=value*(-1);
                         }
                         (*formula)[0].type_flag = 0; // Constant
@@ -246,7 +239,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
                 }
                 if(functionName =="SLEEP"){
                     count_operands=1;
-                    formula=(operand*)malloc(sizeof(operand));
+                    formula=(operand (*)[])malloc(sizeof(operand));
                     char extractedvalue[16];
                     if(sscanf(range, "( %[^)] )", extractedvalue) == 1){
                     
@@ -273,7 +266,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
                         if(r3>r3 || c3 > c4){ printf("Invalid range");
                             return ;}
                         count_operands=(r4-r3+1)*(c4-c3+1);
-                        formula=(operand*)malloc(sizeof(operand)*(r4-r3+1)*(c4-c3+1));
+                        formula=(operand (*)[])malloc(sizeof(operand)*(r4-r3+1)*(c4-c3+1));
                        
                         int count=0;
                             for (int i = r3; i <= r4; i++) {
@@ -310,15 +303,32 @@ int isFunction(const char* expression) {
 
 // Perform arithmetic operation
 int AssignValue(char *op){
- if (*op =="+"){return 3;}
- else if (*op =="-"){return 4;}
- else if (*op =="*"){return 5;}
- else if (*op =="/"){return 6;}
+ if (*op =='+'){return 3;}
+ else if (*op =='-'){return 4;}
+ else if (*op =='*'){return 5;}
+ else if (*op =='/'){return 6;}
  else {
     printf("Error");
  }
 
 }
+
+
+bool contains_alphabet(const char *str) {
+    if (str == NULL) {
+        return false;
+    }
+
+    while (*str != '\0') {
+        if (isalpha(*str)) {
+            return true;
+        }
+        str++;
+    }
+
+    return false;
+}
+
 
 
 
