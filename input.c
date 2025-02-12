@@ -25,6 +25,9 @@ void parseCellName(const char* cellName, int* row, int* col);
 void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols);
 int isArithmeticExpression(const char* expression);
 int isFunction(const char* expression);
+int AssignValue(char *op);
+bool contains_alphabet(const char *str);
+
 
 // Main Function
 // int main() {
@@ -95,7 +98,7 @@ void parseCellName(const char* cellName, int* row, int* col) {
     }
 
     // Extract row part (numbers)
-    if (!isalpha(cellName+1) && !isArithmeticExpression(cellName+1))
+    if (!contains_alphabet(cellName+1) && !isArithmeticExpression(cellName+1))
     *row = atoi(&cellName[i]);
     else{
         printf("invalidInput");
@@ -103,7 +106,7 @@ void parseCellName(const char* cellName, int* row, int* col) {
 }
 
 // Parse input command
-void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols) {
+void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
     char cellName[16];
     char expression[128];
     
@@ -134,7 +137,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols) {
                     return;
                 }
                 count_operands=1;
-                formula=(operand*)malloc(sizeof(operand));
+                formula=(operand (*)[])malloc(sizeof(operand));
                 (*formula)[0].type_flag = 1; // Constant
                 (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[row1][col1];
                 operationID = 2; // Cell assignment with a constant
@@ -243,7 +246,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols) {
                     char extractedvalue[16];
                     if(sscanf(range, "( %[^)] )", extractedvalue) == 1){
                     
-                    if (isalpha(extractedvalue)) {
+                    if (contains_alphabet(extractedvalue)) {
                         int r3, c3;
                         parseCellName(extractedvalue, &r3, &c3);
                         (*formula)[0].type_flag = 1; // Constant
