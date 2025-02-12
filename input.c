@@ -22,6 +22,7 @@ typedef struct operand {
 int operationID;
 int editrow;
 int editcolumn;
+int count_operands;
 operand (*formula)[];
 
 
@@ -33,36 +34,36 @@ int isArithmeticExpression(const char* expression);
 int isFunction(const char* expression);
 
 // Main Function
-int main() {
-    int rows, cols;
-    bool disable_output =0;
-    scanf("%d", &rows);
-    scanf("%d", &cols);
+// int main() {
+//     int rows, cols;
+//     bool disable_output =0;
+//     scanf("%d", &rows);
+//     scanf("%d", &cols);
 
-    if (rows < 1 || rows > 999 || cols < 1 || cols > 18278) {
-        printf("Error: Invalid spreadsheet dimensions.\n");
-        return 1;
-    }
+//     if (rows < 1 || rows > 999 || cols < 1 || cols > 18278) {
+//         printf("Error: Invalid spreadsheet dimensions.\n");
+//         return 1;
+//     }
 
-    // Create the spreadsheet
-    // int** spreadsheet = createSpreadsheet(rows + 1, cols + 1); // Add extra row/col for headers
+//     // Create the spreadsheet
+//     // int** spreadsheet = createSpreadsheet(rows + 1, cols + 1); // Add extra row/col for headers
 
-    // Example input loop
-    char input[256];
-    while (1) {
-        printf("> ");
-        fgets(input, sizeof(input), stdin);
-        input[strcspn(input, "\n")] = '\0'; // Remove trailing newline
+//     // Example input loop
+//     char input[256];
+//     while (1) {
+//         printf("> ");
+//         fgets(input, sizeof(input), stdin);
+//         input[strcspn(input, "\n")] = '\0'; // Remove trailing newline
 
-        if (strcmp(input, "q") == 0) break; // Quit command
-        parseInput(input, spreadsheet, rows, cols,disable_output);
-    }
+//         if (strcmp(input, "q") == 0) break; // Quit command
+//         parseInput(input, spreadsheet, rows, cols,disable_output);
+//     }
 
-    // Free the spreadsheet memory
-    // freeSpreadsheet(spreadsheet, rows + 1);
+//     // Free the spreadsheet memory
+//     // freeSpreadsheet(spreadsheet, rows + 1);
 
-    return 0;
-}
+//     return 0;
+// }
 
 // Function Definitions
 
@@ -115,9 +116,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
     
 
     if (sscanf(input, "%[^=]=%s", cellName, expression) == 2) {
-       
-       
-        
+    
       
         parseCellName(cellName, &editrow, &editcolumn);
 
@@ -128,6 +127,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
 
         if (isdigit(expression[0]) || expression[0] == '-' || expression[0] == '+'||(isalpha(expression[0])&& !strchr(expression,'(')) ) {
             if(!isaplha(expression) && !isArithmeticExpression(expression+1)){
+                count_operands=1;
                 formula=(operand*)malloc(sizeof(operand));
                 (*formula)[0].type_flag = 0; // Constant
                 (*formula)[0].operand_value.constant = atoi(expression);
@@ -140,6 +140,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
                     printf("Error: Invalid cell reference.\n");
                     return;
                 }
+                count_operands=1;
                 formula=(operand*)malloc(sizeof(operand));
                 (*formula)[0].type_flag = 1; // Constant
                 (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[row1][col1];
@@ -147,6 +148,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
 
             }  
             else if (isaplha(expression) && isArithmeticExpression(expression+1)) {
+                count_operands=2;
                 formula=(operand*)malloc(sizeof(operand)*2);
                 char operand1[16], operand2[16], op;
                 if (!(expression[0]=='+'|| expression[0]=='-')){
@@ -243,6 +245,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
                     operationID=12;  
                 }
                 if(functionName =="SLEEP"){
+                    count_operands=1;
                     formula=(operand*)malloc(sizeof(operand));
                     char extractedvalue[16];
                     if(sscanf(range, "( %[^)] )", extractedvalue) == 1){
@@ -269,6 +272,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
                         parseCellName(end, &r4, &c4);
                         if(r3>r3 || c3 > c4){ printf("Invalid range");
                             return ;}
+                        count_operands=(r4-r3+1)*(c4-c3+1);
                         formula=(operand*)malloc(sizeof(operand)*(r4-r3+1)*(c4-c3+1));
                        
                         int count=0;
@@ -289,13 +293,7 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols,bool* 
                 printf("Error: Invalid function call.\n");
             }
         } 
-    else if(input == "disable_output"){
-       disable_output=1;
-    }else if(input == "enable_output"){
-        disable_output=0;
-    }else{                                          // here scroll to is left to addd
-         printf("Error: Invalid command format.\n");
-    }
+    
 
 }
 
