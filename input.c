@@ -96,10 +96,12 @@ void parseCellName(const char* cellName, int* row, int* col) {
         *col = *col * 26 + (toupper(cellName[i]) - 'A' + 1);
         i++;
     }
+    *col-=1;
 
     // Extract row part (numbers)
-    if (!contains_alphabet(cellName+1) && !isArithmeticExpression(cellName+1))
+    if (!contains_alphabet(cellName+1) && !isArithmeticExpression(cellName+1)){
     *row = atoi(&cellName[i]);
+    *row-=1;}
     else{
         printf("invalidInput");
     }
