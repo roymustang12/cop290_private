@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include<input.c>
 #include <unistd.h>
+#include<math.h>
 
 struct Cell;
 int status = 0;
@@ -13,7 +13,7 @@ typedef struct operand
     //type_flag = 1 for formulas in the cell
     union {
         int constant;
-        Cell* cell_operand;
+        struct Cell* cell_operand;
     } operand_value;
 
 }operand;
@@ -33,11 +33,11 @@ typedef struct  Cell
     int is_recalculate;
 }Cell;
 
-typedef struct Coord
-{
-    int x;
-    int y;
-};
+// typedef struct Coord
+// {
+//     int x;
+//     int y;
+// };
 
 //Sheet contains a 2D array of Cell pointers 
 //all_cell is a pointer to the sheet
@@ -49,6 +49,19 @@ typedef struct Spreadsheet
     Cell*** all_cells; //pointer to an array of pointers which point to an array of pointers which refer to Cell
 }Sheet;
 
+
+Sheet* initialise(int rows, int columns);
+void add_dependency(Sheet* sheet, int rf, int cf, int rt, int ct);
+void delete_depedency(Sheet* sheet, int rf, int cf, int rt, int ct);
+void clear_precedents(Sheet* sheet, int rt, int ct);
+void recalculate_dependents(Sheet* sheet, int r, int c);
+int detect_cycle(Cell* cell, Cell** visited, Cell** recursion_stack, int* visited_count, int* stack_count);
+int has_cycle(Sheet* sheet, Cell* start_cell);
+void calculate_cell_value(Sheet* sheet, int rt, int ct);
+int handle_sleep(int seconds);
+void assign_cell(Sheet* sheet, int r, int c, int operation_id, operand (*formula)[], int count_operands);
+int min(int a, int b);
+int max(int a, int b);
 Sheet* initialise(int rows, int columns)
 {
     Sheet* sheet = (Sheet*)malloc(sizeof(Sheet));
@@ -173,57 +186,59 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
     }
 }
 
-int detect_cycle(Cell* cell, Cell** visited, Cell** recursion_stack, int visited_count, int stack_count) {
+int detect_cycle(Cell* cell, Cell** visited, Cell** recursion_stack, int* visited_count, int* stack_count) {
     // Add current cell to visited and recursion stack
-    visited[visited_count++] = cell;
-    recursion_stack[stack_count++] = cell;
+    visited[*visited_count] = cell;
+    (*visited_count)++;
+    recursion_stack[*stack_count] = cell;
+    (*stack_count)++;
     
-    // Check all cells this cell depends on
-    for(int i = 0; i < cell->count_precedents; i++) {
+    // Check all cells this cell depends on (precedents)
+    for (int i = 0; i < cell->count_precedents; i++) {
         Cell* precedent = cell->precedents[i];
         
-        // Check if cell is in recursion stack (cycle found)
-        for(int j = 0; j < stack_count; j++) {
-            if(precedent == recursion_stack[j]) {
+        // If the precedent is in the recursion stack, a cycle is found
+        for (int j = 0; j < *stack_count; j++) {
+            if (precedent == recursion_stack[j]) {
                 return 1;
             }
         }
         
-        // Check if cell hasn't been visited
+        // Check if the precedent has already been visited
         int already_visited = 0;
-        for(int j = 0; j < visited_count; j++) {
-            if(precedent == visited[j]) {
+        for (int j = 0; j < *visited_count; j++) {
+            if (precedent == visited[j]) {
                 already_visited = 1;
                 break;
             }
         }
         
         // If not visited, recursively check for cycles
-        if(!already_visited) {
-            if(detect_cycle(precedent, visited, recursion_stack, 
-                          visited_count, stack_count)) {
+        if (!already_visited) {
+            if (detect_cycle(precedent, visited, recursion_stack, visited_count, stack_count)) {
                 return 1;
             }
         }
     }
     
     // Remove current cell from recursion stack
-    stack_count--;
+    (*stack_count)--;
     return 0;
 }
 
-// Wrapper function to initialize arrays and call cycle detection
 int has_cycle(Sheet* sheet, Cell* start_cell) {
-    Cell** visited = malloc(sheet->rows * sheet->columns * sizeof(Cell*));
-    Cell** recursion_stack = malloc(sheet->rows * sheet->columns * sizeof(Cell*));
+    int max_cells = sheet->rows * sheet->columns;
+    Cell** visited = malloc(max_cells * sizeof(Cell*));
+    Cell** recursion_stack = malloc(max_cells * sizeof(Cell*));
+    int visited_count = 0;
+    int stack_count = 0;
     
-    int result = detect_cycle(start_cell, visited, recursion_stack, 0, 0);
+    int result = detect_cycle(start_cell, visited, recursion_stack, &visited_count, &stack_count);
     
     free(visited);
     free(recursion_stack);
     return result;
 }
-
 
 void calculate_cell_value(Sheet* sheet, int rt, int ct)
 {
@@ -504,4 +519,25 @@ void assign_cell(Sheet* sheet, int r, int c,int operation_id, operand (*formula)
     recalculate_dependents(sheet, r, c);
 }
 
-;
+int min(int a, int b)
+{
+    if(a <= b)
+    {
+        return a;
+    }
+    else
+    {
+        return b;
+    }
+}
+
+int max(int a, int b)
+{
+    if(a >=  b)
+    {
+        return a;
+    }
+    else{
+        return b;
+    }
+}
