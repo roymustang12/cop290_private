@@ -118,12 +118,12 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
       
         parseCellName(cellName, &editrow, &editcolumn);
 
-        if (editrow <= 0 || editrow > rows || editcolumn <= 0 || editcolumn > cols) {
+        if (editrow < 0 || editrow > rows || editcolumn < 0 || editcolumn > cols) {
             printf("Error: Invalid cell reference.\n");
             return;
         }
 
-        if (isdigit(expression[0]) || expression[0] == '-' || expression[0] == '+'||( contains_alphabet(expression[0])&& !strchr(expression,'(')) ) {
+        if (isdigit(expression[0]) || expression[0] == '-' || expression[0] == '+'||( isalpha(expression[0])&& !strchr(expression,'(')) ) {
             if(! contains_alphabet(expression) && !isArithmeticExpression(expression+1)){
                 count_operands=1;
                 formula=(operand (*)[])malloc(sizeof(operand));
@@ -333,7 +333,6 @@ bool contains_alphabet(const char *str) {
 
     return false;
 }
-
 
 
 
