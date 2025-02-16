@@ -56,5 +56,6 @@ int has_cycle(Sheet* sheet, Cell* start_cell);
 void calculate_cell_value(Sheet* sheet, int rt, int ct);
 int handle_sleep(int seconds);
 void assign_cell(Sheet* sheet, int r, int c, int operation_id, operand (*formula)[], int count_operands);
-
+int min(int a, int b);
+int max(int a, int b);
 #endif // DEPENDENCY_GRAPH_H
