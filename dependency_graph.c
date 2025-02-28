@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include<math.h>
+#include <stdbool.h>
 
 struct Cell;
 int status = 0;
@@ -55,6 +56,9 @@ void add_dependency(Sheet* sheet, int rf, int cf, int rt, int ct);
 void delete_depedency(Sheet* sheet, int rf, int cf, int rt, int ct);
 void clear_precedents(Sheet* sheet, int rt, int ct);
 void recalculate_dependents(Sheet* sheet, int r, int c);
+// void recalculate_dependents_2(Sheet* sheet, int r, int c);
+void topological_sort(Sheet* sheet, Cell* start_cell);
+void dfs_topological_sort(Sheet* sheet, Cell* cell, Cell** stack, int* stack_size, bool* visited);
 int detect_cycle(Cell* cell, Cell** visited, Cell** recursion_stack, int* visited_count, int* stack_count);
 int has_cycle(Sheet* sheet, Cell* start_cell);
 void calculate_cell_value(Sheet* sheet, int rt, int ct);
@@ -62,6 +66,8 @@ int handle_sleep(int seconds);
 void assign_cell(Sheet* sheet, int r, int c, int operation_id, operand (*formula)[], int count_operands);
 int min(int a, int b);
 int max(int a, int b);
+void print_formula(Sheet* sheet, int r, int c);
+
 Sheet* initialise(int rows, int columns)
 {
     Sheet* sheet = (Sheet*)malloc(sizeof(Sheet));
@@ -153,8 +159,8 @@ void clear_precedents(Sheet* sheet, int rt, int ct)
     target_cell->count_precedents = 0;
 }
 
-//On updation of value of cell at r,c we need to update all
-//the cells dependent on the cell recently assigned 
+// On updation of value of cell at r,c we need to update all
+// the cells dependent on the cell recently assigned 
 void recalculate_dependents(Sheet* sheet, int r, int c)
 {   if (has_cycle(sheet, sheet->all_cells[r][c]) == 0)
         {Cell** q = (Cell**)malloc(sizeof(Cell*) * sheet->rows * sheet->columns);
@@ -185,6 +191,47 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
         status = 17;
     }
 }
+
+// void recalculate_dependents_2(Sheet* sheet, int r, int c) {
+//     if (has_cycle(sheet, sheet->all_cells[r][c]) == 0) {
+//         topological_sort(sheet, sheet->all_cells[r][c]);
+//     } else {
+//         status = 17; // Cycle detected
+//     }
+// }
+
+// void topological_sort(Sheet* sheet, Cell* start_cell) {
+//     Cell** stack = (Cell**)malloc(sizeof(Cell*) * sheet->rows * sheet->columns);
+//     int stack_size = 0;
+//     bool* visited = (bool*)calloc(sheet->rows * sheet->columns, sizeof(bool));
+
+//     dfs_topological_sort(sheet, start_cell, stack, &stack_size, visited);
+
+//     // Recalculate cells in topological order
+//     while (stack_size > 0) {
+//         Cell* cell = stack[--stack_size];
+//         calculate_cell_value(sheet, cell->r, cell->c);
+//     }
+
+//     free(stack);
+//     free(visited);
+// }
+
+// void dfs_topological_sort(Sheet* sheet, Cell* cell, Cell** stack, int* stack_size, bool* visited) {
+//     int cell_index = cell->r * sheet->columns + cell->c;
+//     visited[cell_index] = true;
+
+//     for (int i = 0; i < cell->count_dependents; i++) {
+//         Cell* dependent = cell->dependents[i];
+//         int dependent_index = dependent->r * sheet->columns + dependent->c;
+//         if (!visited[dependent_index]) {
+//             dfs_topological_sort(sheet, dependent, stack, stack_size, visited);
+//         }
+//     }
+
+//     stack[(*stack_size)++] = cell;
+// }
+
 
 int detect_cycle(Cell* cell, Cell** visited, Cell** recursion_stack, int* visited_count, int* stack_count) {
     // Add current cell to visited and recursion stack
@@ -384,6 +431,9 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct)
                 {
                    temp = max(temp, values[i]);
                 }
+                printf("----CELL MAX VALUE----\n");
+                printf("%d\n",temp);
+                printf("----CELL MAX VALUE END--\n");
                 target_cell->value = temp;
                 break;   
                 }
@@ -407,7 +457,10 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct)
                 {
                    temp = temp + values[i];
                 }
-                target_cell->value = temp/target_cell->count_operands;
+                printf("----TEMP VALUE AVG\n");
+                printf("%d\n",temp);
+                printf("----TEMP VALUE AVG END--\n");
+                target_cell->value = temp/(target_cell->count_operands);
                 break;}
         case 10 :
                 {
@@ -517,6 +570,8 @@ void assign_cell(Sheet* sheet, int r, int c,int operation_id, operand (*formula)
     }
     calculate_cell_value(sheet, r, c);
     recalculate_dependents(sheet, r, c);
+    print_formula(sheet, r, c);
+    printf("OPERATION ID : %d\n\n",sheet->all_cells[r][c]->operation_id);
 }
 
 int min(int a, int b)
@@ -540,4 +595,25 @@ int max(int a, int b)
     else{
         return b;
     }
+}
+
+void print_formula(Sheet* sheet, int r, int c)
+{
+    Cell* curr_cell = sheet->all_cells[r][c];
+    printf("--------FORMULA CONTENTS--------\n");
+    for(int i = 0; i < curr_cell->count_operands; i++)
+    {
+        if((*(curr_cell->formula))[i].type_flag == 0)
+        {
+            printf("%d\n",((*(curr_cell->formula))[i].operand_value.constant));
+        }
+        else
+        {
+            printf("row = %d,",(((*(curr_cell->formula))[i].operand_value.cell_operand->r)));
+            printf("column = %d",(((*(curr_cell->formula))[i].operand_value.cell_operand->c)));
+            printf("\n");
+        }
+    }
+    printf("--------FORMULA CONTENTS END --------\n");
+
 }
