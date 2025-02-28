@@ -118,23 +118,27 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
       
         parseCellName(cellName, &editrow, &editcolumn);
 
-        if (editrow < 0 || editrow > rows || editcolumn < 0 || editcolumn > cols) {
+        if (editrow < 0 || editrow > rows || editcolumn < 0 || editcolumn > cols) {                                                                           
             printf("Error: Invalid cell reference.\n");
             return;
         }
 
-        if (isdigit(expression[0]) || expression[0] == '-' || expression[0] == '+'||( isalpha(expression[0])&& !strchr(expression,'(')) ) {
-            if(! contains_alphabet(expression) && !isArithmeticExpression(expression+1)){
+        if (isdigit(expression[0]) || expression[0] == '-' || expression[0] == '+'||( isalpha(expression[0]) && !strchr(expression,'(')) ) {
+            if((!contains_alphabet(expression)) && !isArithmeticExpression(expression+1)){
                 count_operands=1;
                 formula=(operand (*)[])malloc(sizeof(operand));
                 (*formula)[0].type_flag = 0; // Constant
                 (*formula)[0].operand_value.constant = atoi(expression);
                 operationID = 1; // Cell assignment with a constant
             }  
-            else if ( contains_alphabet(expression) && !isArithmeticExpression(expression+1))  {
+            else if (contains_alphabet(expression) && !isArithmeticExpression(expression+1))  {
                 int row1,col1;
-                parseCellName(cellName, &row1, &col1);
-                if (row1 <= 0 || row1 > rows || col1 <= 0 || col1 > cols) {
+                parseCellName(expression, &row1, &col1);
+                printf("---CELL NAMES\n");
+                printf("row = %d, column = %d", row1,col1);
+                printf("---CELL NAMES END\n");
+
+                if (row1 < 0 || row1 > rows || col1 < 0 || col1 > cols) {
                     printf("Error: Invalid cell reference.\n");
                     return;
                 }
@@ -217,32 +221,105 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                   
                 }
            } 
-         } 
+        } 
+            else if ((!contains_alphabet(expression)) && isArithmeticExpression(expression + 1)){
+                count_operands=2;
+                formula=(operand (*)[])malloc(sizeof(operand)*2);
+                char operand1[16], operand2[16], op;
+                if (!(expression[0]=='+'|| expression[0]=='-')){
+
+                    if (sscanf(expression, "%[^+-*/]%c%s", operand1, &op, operand2) == 3) {
+                        int val1, val2;
+                        if (isalpha(operand1[0])) {
+                            int r1, c1;
+                            parseCellName(operand1, &r1, &c1);
+                            (*formula)[0].type_flag = 1; // Constant
+                            (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
+                            
+                            operationID = AssignValue(&op); // Cell assignment with a constant  
+                            
+                        } else {
+                            (*formula)[0].type_flag = 0; // Constant
+                            (*formula)[0].operand_value.constant = atoi(operand1) ;
+                            operationID = AssignValue(&op); // Cell assignment with a constant
+                        }
+
+                        if (isalpha(operand2[0])) {
+                            int r1, c1;
+                            parseCellName(operand2, &r1, &c1);
+                            (*formula)[1].type_flag = 1; // Constant
+                            (*formula)[1].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
+                            operationID = AssignValue(&op); // Cell assignment with a constant
+                            
+                        } else {
+                            (*formula)[1].type_flag = 0; // Constant
+                            (*formula)[1].operand_value.constant = atoi(operand2) ;
+                            operationID = AssignValue(&op); // Cell assignment with a constant
+                        }
+                      
+                    }
+            }
+            else if((expression[0]=='+'|| expression[0]=='-')){
+                if (sscanf(expression+1, "%[^+-*/]%c%s", operand1, &op, operand2) == 3) {
+                    int val1, val2;
+                    if (isalpha(operand1[0])) {
+                        int r1, c1;
+                        parseCellName(operand1, &r1, &c1);
+                        (*formula)[0].type_flag = 1; // Constant
+                        (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
+                        operationID = AssignValue(&op); // Cell assignment with a constant  // remember here emre ko operation id assignment karna hai with +,-,/,*
+                        
+                    } else {
+                        int value=atoi(operand1);
+                        if(expression[0]=='-'){
+                            value=value*(-1);
+                        }
+                        (*formula)[0].type_flag = 0; // Constant
+                        (*formula)[0].operand_value.constant = value ;
+                        operationID = AssignValue(&op); // Cell assignment with a constant
+                    }
+
+                    if (isalpha(operand2[0])) {
+                        int r1, c1;
+                        parseCellName(operand2, &r1, &c1);
+                        (*formula)[1].type_flag = 1; // Constant
+                        (*formula)[1].operand_value.cell_operand = spreadsheet->all_cells[r1][c1];
+                        operationID = AssignValue(&op); // Cell assignment with a constant
+                        
+                    } else {
+                        (*formula)[1].type_flag = 0; // Constant
+                        (*formula)[1].operand_value.constant = atoi(operand2) ;
+                        operationID = AssignValue(&op); // Cell assignment with a constant
+                    }
+                  
+                }
+           } 
+            }
         } else if (isFunction(expression)) {
            
           
             
             char functionName[16], range[64];
             if (sscanf(expression, "%[^()](%[^)])", functionName, range) == 2) {
-                if (functionName =="MIN"){
+                if (strcmp(functionName, "MIN") == 0){
                     operationID=7;
                 }
-                else if (functionName =="MAX"){
+                else if (strcmp(functionName, "MAX") == 0){
                     operationID=8;
                 }
-                else if (functionName =="AVG"){
+                else if (strcmp(functionName, "AVG") == 0){
                     operationID=9;                
                 }
-                else if (functionName =="SUM"){
+                else if (strcmp(functionName, "SUM") == 0){
                     operationID=10;      
                 }
-                else if (functionName =="STDEV"){
+                else if (strcmp(functionName, "STDEV") == 0){
                     operationID=11;  
                 }
-                else if (functionName =="SLEEP"){
+                else if (strcmp(functionName, "SLEEP") == 0){
                     operationID=12;  
                 }
-                if(functionName =="SLEEP"){
+                if(strcmp(functionName, "SLEEP") == 0){
                     count_operands=1;
                     formula=(operand (*)[])malloc(sizeof(operand));
                     char extractedvalue[16];
@@ -333,7 +410,6 @@ bool contains_alphabet(const char *str) {
 
     return false;
 }
-
 
 
 
