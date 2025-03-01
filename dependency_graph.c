@@ -200,15 +200,15 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
             {
                 if(zero_div_err(sheet, current_cell->r, current_cell->c) == true)
                 {
-                    printf("--ZERO DIV ERROR STARTS\n");
-                    printf("--ZERO DIV ERRRO END");
+                    // printf("--ZERO DIV ERROR STARTS\n");
+                    // printf("--ZERO DIV ERRRO END");
                     status = 2;
                     current_cell->is_error = true;
                 }
                  else if (precedent_has_error(sheet, current_cell->r, current_cell->c) == true)
                  {
-                    printf("--PRECEDENT ME ERROR\n");
-                    printf("--PRECEDENT ME ERROR END");
+                    // printf("--PRECEDENT ME ERROR\n");
+                    // printf("--PRECEDENT ME ERROR END");
                     status = 2;
                     current_cell->is_error = true;
                 }
@@ -664,9 +664,9 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 {
                     break;
                 }
-                printf("----TEMP VALUE AVG\n");
-                printf("%d\n",temp);
-                printf("----TEMP VALUE AVG END--\n");
+                // printf("----TEMP VALUE AVG\n");
+                // printf("%d\n",temp);
+                // printf("----TEMP VALUE AVG END--\n");
                 target_cell->value = temp/(target_cell->count_operands);
                 status = 0;
                 target_cell->is_error = false;
@@ -790,12 +790,12 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     seconds = (*(target_cell->formula))[0].operand_value.cell_operand->value;
                 }
                 fflush(stdout);
-                printf("---INSIDE SLEEP----\n");
-                printf("%d\n INT PRINTED",seconds);
+                // printf("---INSIDE SLEEP----\n");
+                // printf("%d\n INT PRINTED",seconds);
                 target_cell->value = handle_sleep(sheet,rt,ct,seconds);
                 status = 0;
                 // sleep(seconds);
-                printf("---OUTSIDE SLEEP----\n");
+                // printf("---OUTSIDE SLEEP----\n");
                 target_cell->is_error = false;
                 break;}
     }
@@ -878,8 +878,8 @@ void assign_cell(Sheet* sheet, int r, int c,int operation_id, operand (*formula)
 
     }
     
-    print_formula(sheet, r, c);
-    printf("OPERATION ID : %d\n\n",sheet->all_cells[r][c]->operation_id);
+    // print_formula(sheet, r, c);
+    // printf("OPERATION ID : %d\n\n",sheet->all_cells[r][c]->operation_id);
 }
 
 int min(int a, int b)
