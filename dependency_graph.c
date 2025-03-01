@@ -188,12 +188,14 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
                 {
                     printf("--ZERO DIV ERROR STARTS\n");
                     printf("--ZERO DIV ERRRO END");
+                    status = 2;
                     current_cell->is_error = true;
                 }
                  else if (precedent_has_error(sheet, current_cell->r, current_cell->c) == true)
                  {
                     printf("--PRECEDENT ME ERROR\n");
                     printf("--PRECEDENT ME ERROR END");
+                    status = 2;
                     current_cell->is_error = true;
                 }
                 else{                calculate_cell_value(sheet, current_cell->r, current_cell->c);
@@ -209,7 +211,7 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
         free(q);}
     else{
         printf("CHUD GAYE");
-        status = 17;
+        status = 3;
     }
 }
 
@@ -346,6 +348,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
         case 1 :
                 {int value = (*(target_cell->formula))[0].operand_value.constant;
                 target_cell->value = value;
+                status = 0;
                 break;}
         case 2 :
                 {int value = (*(target_cell->formula))[0].operand_value.cell_operand->value;
@@ -354,11 +357,13 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 if(error = false)
                 {
                     target_cell->value = value;
+                    status = 0;
                     target_cell->is_error = false;
                 }
                 else
                 {
                     target_cell->is_error = true;
+                    status = 2;
                 }
                 break;}
         case 3:
@@ -388,12 +393,14 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 if(err1 == false && err2 == false)
                     {
                         target_cell->value = value1 + value2;
+                        status = 0;
                         target_cell->is_error = false;
 
                     }
                 else
                 {
                     target_cell->is_error = true;
+                    status = 2;
                 }
                 break;}
         case 4:
@@ -425,11 +432,13 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 if(err1 == false && err2 == false)
                     {
                         target_cell->value = value1 - value2;
+                        status = 0;
                         target_cell->is_error = false;
                     }
                 else
                 {
                     target_cell->is_error = true;
+                    status = 2;
                 }
                 break;}
     case 5 :
@@ -460,12 +469,14 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 }
                 if(err1 == false && err2 == false)
                     {
-                        target_cell->value = value1 - value2;
+                        target_cell->value = value1 * value2;
+                        status = 0;
                         target_cell->is_error = false;
                     }
                 else
                 {
                     target_cell->is_error = true;
+                    status = 2;
                 }
                 break;}
     case 6 :
@@ -497,14 +508,17 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 if(value2 == 0)
                 {
                     target_cell->is_error = true;
+                    status = 2;
                 }
                 else if(err1==true || err1==true)
                 {
                     target_cell->is_error = true;
+                    status = 2;
                 }
                 else
                     {
                         target_cell->value = value1 / value2;
+                        status = 0;
                         target_cell->is_error = false;
                     }
                 break;}
@@ -532,10 +546,13 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     if(err[i]==true)
                     {
                         target_cell->is_error = true;
+                        status = 2;
+
                         break;
                     }
                 }
                 target_cell->value = temp;
+                status = 0;
                 target_cell->is_error = false;
                 break;}
         case 8 : 
@@ -563,6 +580,8 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                    if(err[i] == true)
                    {
                     target_cell->is_error = true;
+                    status = 2;
+
                     break;
                    }
                 }
@@ -570,6 +589,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 printf("%d\n",temp);
                 printf("----CELL MAX VALUE END--\n");
                 target_cell->value = temp;
+                status = 0;
                 target_cell->is_error = false;
                 break;   
                 }
@@ -597,6 +617,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                    if(err[i]==true)
                    {
                     target_cell->is_error = true;
+                    status = 2;
                     break;
                    }
                 }
@@ -604,6 +625,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 printf("%d\n",temp);
                 printf("----TEMP VALUE AVG END--\n");
                 target_cell->value = temp/(target_cell->count_operands);
+                status = 0;
                 target_cell->is_error = false;
                 break;}
         case 10 :
@@ -631,10 +653,13 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     if(err[i]==true)
                     {
                         target_cell->is_error=true;
+                        status = 2;
+
                         break;
                     }
                 }
                 target_cell->value = temp;
+                status = 0;
                 target_cell->is_error = false;
                 break;
                 }
@@ -664,6 +689,8 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     if(err[i]==true)
                     {
                         target_cell->is_error = true;
+                        status = 2;
+
                         break;
                     }
                 }
@@ -682,6 +709,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 
                 // Optionally round or convert to int if needed.
                 target_cell->value = (int)std_dev;
+                status = 0;
                 target_cell->is_error = false;
                 break;
                 }
@@ -697,7 +725,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 printf("---INSIDE SLEEP----\n");
                 printf("%d\n INT PRINTED",seconds);
                 target_cell->value = handle_sleep(seconds);
-                
+                status = 0;
                 // sleep(seconds);
                 printf("---OUTSIDE SLEEP----\n");
                 target_cell->is_error = false;
@@ -750,14 +778,18 @@ void assign_cell(Sheet* sheet, int r, int c,int operation_id, operand (*formula)
     {
         if(zero_div_err(sheet, r, c) == false)
             {calculate_cell_value(sheet, r, c);
-            recalculate_dependents(sheet, r, c);}
+            recalculate_dependents(sheet, r, c);
+            status = 0;
+        }
         else{
             target_cell->is_error = true;
+            status = 2;
             recalculate_dependents(sheet, r, c);
         }
     }
     else
     {
+        status = 3;
         target_cell->formula = temp;
         target_cell->operation_id = temp_id;
         target_cell->count_operands = temp_count;
@@ -832,6 +864,7 @@ bool precedent_has_error(Sheet* sheet, int r, int c){
         Cell* curr_cell = target_cell->precedents[i];
         if (curr_cell->is_error == true)
         {
+            status = 2;
             return true;
         }
     }
@@ -857,6 +890,7 @@ bool zero_div_err(Sheet* sheet, int r, int c)
 
         if(val2 == 0)
         {
+            status = 2;
             return true;
         }
         else{
