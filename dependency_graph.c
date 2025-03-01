@@ -63,11 +63,13 @@ bool dfs_cycle_detection(Sheet* sheet,Cell* cell, bool* visited, bool* recursion
 int detect_cycle(Cell* cell, Cell** visited, Cell** recursion_stack, int* visited_count, int* stack_count);
 bool has_cycle(Sheet* sheet, Cell* start_cell);
 void calculate_cell_value(Sheet* sheet, int rt, int ct);
-int handle_sleep(int seconds);
 void assign_cell(Sheet* sheet, int r, int c, int operation_id, operand (*formula)[], int count_operands);
 int min(int a, int b);
 int max(int a, int b);
 void print_formula(Sheet* sheet, int r, int c);
+bool precedent_has_error(Sheet* sheet, int r, int c);
+bool zero_div_err(Sheet* sheet, int r, int c);
+int handle_sleep(int seconds);
 
 Sheet* initialise(int rows, int columns)
 {
@@ -182,8 +184,20 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
             front = front + 1;
             if (has_cycle(sheet, current_cell) == false)
             {
-                
-                calculate_cell_value(sheet, current_cell->r, current_cell->c);
+                if(zero_div_err(sheet, current_cell->r, current_cell->c) == true)
+                {
+                    printf("--ZERO DIV ERROR STARTS\n");
+                    printf("--ZERO DIV ERRRO END");
+                    current_cell->is_error = true;
+                }
+                 else if (precedent_has_error(sheet, current_cell->r, current_cell->c) == true)
+                 {
+                    printf("--PRECEDENT ME ERROR\n");
+                    printf("--PRECEDENT ME ERROR END");
+                    current_cell->is_error = true;
+                }
+                else{                calculate_cell_value(sheet, current_cell->r, current_cell->c);
+                }
             }
             //Add the dependents of the current_cell to the queue
             for(int i = 0; i < current_cell->count_dependents;i++)
@@ -335,12 +349,24 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 break;}
         case 2 :
                 {int value = (*(target_cell->formula))[0].operand_value.cell_operand->value;
-                target_cell->value = value;
+                bool error = (*(target_cell->formula))[0].operand_value.cell_operand->is_error;
+                
+                if(error = false)
+                {
+                    target_cell->value = value;
+                    target_cell->is_error = false;
+                }
+                else
+                {
+                    target_cell->is_error = true;
+                }
                 break;}
         case 3:
                 {int flag1 = (*(target_cell->formula))[0].type_flag;
                 int flag2 = (*(target_cell->formula))[1].type_flag;
                 int value1, value2;
+                bool err1 = false;
+                bool err2 = false;
                 if (flag1 == 0)
                 {
                     value1 = (*(target_cell->formula))[0].operand_value.constant;
@@ -348,6 +374,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 else
                 {
                     value1 = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                    err1  = (*(target_cell->formula))[0].operand_value.cell_operand->is_error;
                 }
                 if (flag2 == 0)
                 {
@@ -356,13 +383,25 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 else
                 {
                     value2 = (*(target_cell->formula))[1].operand_value.cell_operand->value;
+                    err2 = (*(target_cell->formula))[1].operand_value.cell_operand->is_error;
                 }
-                target_cell->value = value1 + value2;
+                if(err1 == false && err2 == false)
+                    {
+                        target_cell->value = value1 + value2;
+                        target_cell->is_error = false;
+
+                    }
+                else
+                {
+                    target_cell->is_error = true;
+                }
                 break;}
         case 4:
                 {int flag1 = (*(target_cell->formula))[0].type_flag;
                 int flag2 = (*(target_cell->formula))[1].type_flag;
                 int value1, value2;
+                bool err1= false;
+                bool err2 = false;
                 if (flag1 == 0)
                 {
                     value1 = (*(target_cell->formula))[0].operand_value.constant;
@@ -370,6 +409,8 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 else
                 {
                     value1 = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                    err1  = (*(target_cell->formula))[0].operand_value.cell_operand->is_error;
+
                 }
                 if (flag2 == 0)
                 {
@@ -378,13 +419,25 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 else
                 {
                     value2 = (*(target_cell->formula))[1].operand_value.cell_operand->value;
+                    err2  = (*(target_cell->formula))[1].operand_value.cell_operand->is_error;
+
                 }
-                target_cell->value = value1 - value2;
+                if(err1 == false && err2 == false)
+                    {
+                        target_cell->value = value1 - value2;
+                        target_cell->is_error = false;
+                    }
+                else
+                {
+                    target_cell->is_error = true;
+                }
                 break;}
     case 5 :
                 {int flag1 = (*(target_cell->formula))[0].type_flag;
                 int flag2 = (*(target_cell->formula))[1].type_flag;
                 int value1, value2;
+                bool err1 = false;
+                bool err2 = false;
                 if (flag1 == 0)
                 {
                     value1 = (*(target_cell->formula))[0].operand_value.constant;
@@ -392,6 +445,8 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 else
                 {
                     value1 = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                    err1  = (*(target_cell->formula))[0].operand_value.cell_operand->is_error;
+
                 }
                 if (flag2 == 0)
                 {
@@ -400,13 +455,25 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 else
                 {
                     value2 = (*(target_cell->formula))[1].operand_value.cell_operand->value;
+                    err2  = (*(target_cell->formula))[1].operand_value.cell_operand->is_error;
+
                 }
-                target_cell->value = value1 * value2;
+                if(err1 == false && err2 == false)
+                    {
+                        target_cell->value = value1 - value2;
+                        target_cell->is_error = false;
+                    }
+                else
+                {
+                    target_cell->is_error = true;
+                }
                 break;}
     case 6 :
                 {int flag1 = (*(target_cell->formula))[0].type_flag;
                 int flag2 = (*(target_cell->formula))[1].type_flag;
                 int value1, value2;
+                bool err1= false;
+                bool err2  =false;
                 if (flag1 == 0)
                 {
                     value1 = (*(target_cell->formula))[0].operand_value.constant;
@@ -414,6 +481,8 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 else
                 {
                     value1 = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                    err1  = (*(target_cell->formula))[0].operand_value.cell_operand->is_error;
+
                 }
                 if (flag2 == 0)
                 {
@@ -422,11 +491,26 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 else
                 {
                     value2 = (*(target_cell->formula))[1].operand_value.cell_operand->value;
+                    err2  = (*(target_cell->formula))[1].operand_value.cell_operand->is_error;
+
                 }
-                target_cell->value = value1 / value2;
+                if(value2 == 0)
+                {
+                    target_cell->is_error = true;
+                }
+                else if(err1==true || err1==true)
+                {
+                    target_cell->is_error = true;
+                }
+                else
+                    {
+                        target_cell->value = value1 / value2;
+                        target_cell->is_error = false;
+                    }
                 break;}
     case 7 :
                 {int values[target_cell->count_operands];
+                bool err[target_cell->count_operands];
                 int flag;
                 for(int i = 0; i < target_cell->count_operands ; i++)
                 {
@@ -438,18 +522,26 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     else
                     {
                         values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                        err[i] = (*(target_cell->formula))[i].operand_value.cell_operand->is_error;
                     }
                 }
                 int temp = values[0];
                 for(int i = 0; i < target_cell->count_operands; i++)
                 {
                     temp = min(temp, values[i]);
+                    if(err[i]==true)
+                    {
+                        target_cell->is_error = true;
+                        break;
+                    }
                 }
                 target_cell->value = temp;
+                target_cell->is_error = false;
                 break;}
         case 8 : 
                 {
                 int values[target_cell->count_operands];
+                bool err[target_cell->count_operands];
                 int flag;
                 for(int i = 0; i < target_cell->count_operands ; i++)
                 {
@@ -461,21 +553,29 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     else
                     {
                         values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                        err[i] = (*(target_cell->formula))[i].operand_value.cell_operand->is_error;
                     }
                 }
                 int temp = values[0];
                 for(int i = 0; i < target_cell->count_operands; i++)
                 {
                    temp = max(temp, values[i]);
+                   if(err[i] == true)
+                   {
+                    target_cell->is_error = true;
+                    break;
+                   }
                 }
                 printf("----CELL MAX VALUE----\n");
                 printf("%d\n",temp);
                 printf("----CELL MAX VALUE END--\n");
                 target_cell->value = temp;
+                target_cell->is_error = false;
                 break;   
                 }
         case 9:
                 {int values[target_cell->count_operands];
+                    bool err[target_cell->count_operands];
                 int flag;
                 for(int i = 0; i < target_cell->count_operands ; i++)
                 {
@@ -487,21 +587,29 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     else
                     {
                         values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                        err[i] = (*(target_cell->formula))[i].operand_value.cell_operand->is_error;
                     }
                 }
                 int temp = 0;
                 for(int i = 0; i < target_cell->count_operands; i++)
                 {
                    temp = temp + values[i];
+                   if(err[i]==true)
+                   {
+                    target_cell->is_error = true;
+                    break;
+                   }
                 }
                 printf("----TEMP VALUE AVG\n");
                 printf("%d\n",temp);
                 printf("----TEMP VALUE AVG END--\n");
                 target_cell->value = temp/(target_cell->count_operands);
+                target_cell->is_error = false;
                 break;}
         case 10 :
                 {
                     int values[target_cell->count_operands];
+                    bool err[target_cell->count_operands];
                 int flag;
                 for(int i = 0; i < target_cell->count_operands ; i++)
                 {
@@ -513,19 +621,27 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     else
                     {
                         values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                        err[i] = (*(target_cell->formula))[i].operand_value.cell_operand->is_error;
                     }
                 }
                 int temp = 0;
                 for(int i = 0; i < target_cell->count_operands; i++)
                 {
                     temp = temp + values[i];
+                    if(err[i]==true)
+                    {
+                        target_cell->is_error=true;
+                        break;
+                    }
                 }
                 target_cell->value = temp;
+                target_cell->is_error = false;
                 break;
                 }
         case 11:
                 {
                 int values[target_cell->count_operands];
+                int err[target_cell->count_operands];
                 int flag;
                 for(int i = 0; i < target_cell->count_operands ; i++)
                 {
@@ -537,6 +653,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     else
                     {
                         values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                        err[i] = (*(target_cell->formula))[i].operand_value.cell_operand->is_error;
                     }
                 }
                 // Calculate mean
@@ -544,6 +661,11 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 for (int i = 0; i < target_cell->count_operands; i++)
                 {
                     sum += values[i];
+                    if(err[i]==true)
+                    {
+                        target_cell->is_error = true;
+                        break;
+                    }
                 }
                 double mean = sum / target_cell->count_operands;
                 
@@ -560,23 +682,29 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 
                 // Optionally round or convert to int if needed.
                 target_cell->value = (int)std_dev;
+                target_cell->is_error = false;
                 break;
                 }
         case 12:
                 {int seconds;
+
                 if ((*(target_cell->formula))[0].type_flag == 0) {
                     seconds = (*(target_cell->formula))[0].operand_value.constant;
                 } else {
                     seconds = (*(target_cell->formula))[0].operand_value.cell_operand->value;
                 }
+                fflush(stdout);
+                printf("---INSIDE SLEEP----\n");
+                printf("%d\n INT PRINTED",seconds);
                 target_cell->value = handle_sleep(seconds);
+                
+                // sleep(seconds);
+                printf("---OUTSIDE SLEEP----\n");
+                target_cell->is_error = false;
                 break;}
     }
 }
 
-int handle_sleep(int seconds) {
-    sleep(seconds);  
-    return seconds;}
 
 //When a cell is assigned a formula 
 //We need to update its attributes 
@@ -620,8 +748,13 @@ void assign_cell(Sheet* sheet, int r, int c,int operation_id, operand (*formula)
     }
     if (has_cycle(sheet, sheet->all_cells[r][c]) == false)
     {
-        calculate_cell_value(sheet, r, c);
-        recalculate_dependents(sheet, r, c);
+        if(zero_div_err(sheet, r, c) == false)
+            {calculate_cell_value(sheet, r, c);
+            recalculate_dependents(sheet, r, c);}
+        else{
+            target_cell->is_error = true;
+            recalculate_dependents(sheet, r, c);
+        }
     }
     else
     {
@@ -672,8 +805,7 @@ int max(int a, int b)
     }
 }
 
-void print_formula(Sheet* sheet, int r, int c)
-{
+void print_formula(Sheet* sheet, int r, int c){
     Cell* curr_cell = sheet->all_cells[r][c];
     printf("--------FORMULA CONTENTS--------\n");
     for(int i = 0; i < curr_cell->count_operands; i++)
@@ -691,4 +823,55 @@ void print_formula(Sheet* sheet, int r, int c)
     }
     printf("--------FORMULA CONTENTS END --------\n");
 
+}
+
+bool precedent_has_error(Sheet* sheet, int r, int c){
+    Cell* target_cell = sheet->all_cells[r][c];
+    for(int i = 0; i < target_cell->count_precedents; i++)
+    {
+        Cell* curr_cell = target_cell->precedents[i];
+        if (curr_cell->is_error == true)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool zero_div_err(Sheet* sheet, int r, int c)
+{
+    Cell* target_cell = sheet->all_cells[r][c];
+    if(target_cell->operation_id == 6 && target_cell->count_precedents==2)
+    {
+        int flag = (*(target_cell->formula))[1].type_flag;
+        int val2;
+        if(flag == 0)
+        {
+            val2 = (*(target_cell->formula))[1].operand_value.constant;
+        }
+        else
+        {
+            val2 = (*(target_cell->formula))[1].operand_value.cell_operand->value;
+        }
+
+
+        if(val2 == 0)
+        {
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
+    return false;
+}
+
+int handle_sleep(int seconds)
+{
+    printf("Sleeping for %d seconds...\n", seconds);
+    fflush(stdout);  // Add this line
+    sleep(seconds);
+    printf("Sleep completed.\n");
+    fflush(stdout);  // Add this line
+    return seconds;
 }
