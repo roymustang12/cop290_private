@@ -354,7 +354,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 {int value = (*(target_cell->formula))[0].operand_value.cell_operand->value;
                 bool error = (*(target_cell->formula))[0].operand_value.cell_operand->is_error;
                 
-                if(error = false)
+                if(error == false)
                 {
                     target_cell->value = value;
                     status = 0;
