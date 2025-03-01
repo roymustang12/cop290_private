@@ -17,5 +17,6 @@ void parseInput(const char* input, Sheet* spreadsheet, int rows, int cols);
 int isArithmeticExpression(const char* expression);
 int isFunction(const char* expression);
 int AssignValue(char* op);
+int string_to_int(const char *num_str);
 
 #endif // INPUT_H
