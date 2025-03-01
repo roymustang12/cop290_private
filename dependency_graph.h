@@ -64,4 +64,5 @@ void assign_cell(Sheet* sheet, int r, int c, int operation_id, operand (*formula
 int min(int a, int b);
 int max(int a, int b);
 void print_formula(Sheet* sheet, int r, int c);
+int stdev(int* arr, int n);
 #endif // DEPENDENCY_GRAPH_H
