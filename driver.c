@@ -51,6 +51,7 @@ int main(int argc, char* argv[]) {
     char status_str[256];
     double execution_time = 0.0;
     bool print_flag = true;
+    update_display(sheet, rows, columns);
     
 
     while (1) {
@@ -69,7 +70,7 @@ int main(int argc, char* argv[]) {
             strcpy(status_str,"cyclic dependence");
             status=0;
         }
-        printf("%.1f (%s) > ", execution_time, status_str);
+        printf("[%.1f] (%s) > ", execution_time, status_str);
         fgets(input, sizeof(input), stdin);
         input[strcspn(input, "\n")] = '\0';
 
@@ -223,10 +224,10 @@ void display_sheet(Sheet* sheet, int rows, int cols) {
 
 void display_single_cell(Sheet* sheet, int row, int col) {
     
-    printf("      ");
+    printf("   ");
     char label[4] = "";
     get_col_label(col, label);
-    printf(" %s\n", label);
+    printf(" %9s\n", label);
     if(sheet->all_cells[row][col]->is_error==true){
         char *error="ERR";
         printf("%3d %9d \n", row + 1,error);
