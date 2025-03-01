@@ -1,415 +1,694 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
-#include <limits.h>
-#include <math.h>
+#include <unistd.h>
+#include<math.h>
 #include <stdbool.h>
-#include "dependency_graph.h"
+struct Cell;
+int status = 0;
+typedef struct operand
+{
+    int type_flag;
+    //type_flat = 0 for integer constants 
+    //type_flag = 1 for formulas in the cell
+    union {
+        int constant;
+        struct Cell* cell_operand;
+    } operand_value;
+
+}operand;
+
+typedef struct  Cell
+{
+    int value;
+    int operation_id;
+    operand (*formula)[];
+    int count_operands;
+    int r;
+    int c;
+    struct Cell** dependents; //This is a pointer to an array of pointers which point to all the cells which  are dependent on it
+    int  count_dependents;
+    struct Cell** precedents;//This is a pointer to an array of pointers which point to all the cells on which the current cell is dependent 
+    int count_precedents;
+    int is_recalculate;
+    bool is_error;
+}Cell;
+
+// typedef struct Coord
+// {
+//     int x;
+//     int y;
+// };
+
+//Sheet contains a 2D array of Cell pointers 
+//all_cell is a pointer to the sheet
+//all_cells contain a 
+typedef struct Spreadsheet
+{
+    int rows;
+    int columns;
+    Cell*** all_cells; //pointer to an array of pointers which point to an array of pointers which refer to Cell
+}Sheet;
 
 
+Sheet* initialise(int rows, int columns);
+void add_dependency(Sheet* sheet, int rf, int cf, int rt, int ct);
+void delete_depedency(Sheet* sheet, int rf, int cf, int rt, int ct);
+void clear_precedents(Sheet* sheet, int rt, int ct);
+void recalculate_dependents(Sheet* sheet, int r, int c);
+// void recalculate_dependents_2(Sheet* sheet, int r, int c);
+void topological_sort(Sheet* sheet, Cell* start_cell);
+void dfs_topological_sort(Sheet* sheet, Cell* cell, Cell** stack, int* stack_size, bool* visited);
+bool dfs_cycle_detection(Sheet* sheet,Cell* cell, bool* visited, bool* recursion_stack);
+int detect_cycle(Cell* cell, Cell** visited, Cell** recursion_stack, int* visited_count, int* stack_count);
+bool has_cycle(Sheet* sheet, Cell* start_cell);
+void calculate_cell_value(Sheet* sheet, int rt, int ct);
+int handle_sleep(int seconds);
+void assign_cell(Sheet* sheet, int r, int c, int operation_id, operand (*formula)[], int count_operands);
+int min(int a, int b);
+int max(int a, int b);
+void print_formula(Sheet* sheet, int r, int c);
 
+Sheet* initialise(int rows, int columns)
+{
+    Sheet* sheet = (Sheet*)malloc(sizeof(Sheet));
+    sheet->rows = rows;
+    sheet->columns = columns;
+    sheet->all_cells = (Cell***)malloc(sizeof(Cell**) * rows);
+    for(int i = 0; i < sheet->rows; i++)
+    {
+        sheet->all_cells[i] = (Cell**)malloc(sizeof(Cell*) * columns);
+        for(int j = 0;j < sheet->columns; j++)
+        {
+           sheet->all_cells[i][j] = (Cell*)malloc(sizeof(Cell));
+           sheet->all_cells[i][j]->r = i;
+           sheet->all_cells[i][j]->c = j;
+           sheet->all_cells[i][j]->value = 0;
+           sheet->all_cells[i][j]->operation_id = -1; //operand_id = -1 when cell is not assigned any formula
+           sheet->all_cells[i][j]->count_dependents = 0;
+           sheet->all_cells[i][j]->count_precedents = 0;
+           sheet->all_cells[i][j]->formula = NULL; // Assuming a maximum of 10 operands for simplicity
+           sheet->all_cells[i][j]->dependents = NULL;
+           sheet->all_cells[i][j]->precedents = NULL;
+           sheet->all_cells[i][j]->is_recalculate = 0;
+           sheet->all_cells[i][j]->count_operands = 0;
+           sheet->all_cells[i][j]->is_error = false;
+            //0 when no recalculation is needed 
+        }
+    }
+    return sheet;
+}
 
+//Cell rt,ct contains the cell rf,cf in the formula expresssion
+//Add rt,ct to the dependents of rf,cf
+//Add rf,cf to the precedents of rt,ct
+void add_dependency(Sheet* sheet, int rf, int cf, int rt, int ct)
+{
+    Cell* dependent_cell = sheet->all_cells[rt][ct];
+    Cell* precedent_cell = sheet->all_cells[rf][cf];
+    precedent_cell->count_dependents+=1;
+    precedent_cell->dependents = realloc(precedent_cell->dependents,sizeof(Cell*) * precedent_cell->count_dependents);
+    precedent_cell->dependents[precedent_cell->count_dependents - 1] = dependent_cell;
 
+    dependent_cell->count_precedents+=1;
+    dependent_cell->precedents = realloc(dependent_cell->precedents,sizeof(Cell*) * dependent_cell->count_precedents);
+    dependent_cell->precedents[dependent_cell->count_precedents - 1] = precedent_cell;
 
-int operationID;
-int editrow;
-int editcolumn;
-int count_operands;
-operand (*formula)[];
+}
 
+//Cell rt,ct contains the cell rf,cf in the formula expresssion
+//When updating the formula of rt,ct we need to remove the cell rt,ct 
+//list of depedents of rf,cf 
+void delete_depedency(Sheet* sheet, int rf, int cf, int rt, int ct)
+{
+    Cell* dependent_cell = sheet->all_cells[rt][ct];
+    Cell* precedent_cell = sheet->all_cells[rf][cf];
+    int target_index = -1;
+    for(int i = 0; i < precedent_cell->count_dependents; i++)
+    {
+        if(precedent_cell->dependents[i]->r == rt && precedent_cell->dependents[i]->c == ct)
+        {
+            target_index = i;
+            break;
+        }
+    }
+    //Ab yaha se memory hata and resize
+    if (target_index != -1)
+    {
+        for(int i = target_index; i < target_index - 1; i++)
+        {
+            precedent_cell->dependents[i] = precedent_cell->dependents[i+1];
+        }
+        precedent_cell->count_dependents-=1;
+        if(precedent_cell->count_dependents > 0)
+        {
+            precedent_cell->dependents = realloc(precedent_cell->dependents, sizeof(Cell*) * precedent_cell->count_dependents);
+        }
+        else
+        {
+            free(precedent_cell->dependents);
+            precedent_cell->dependents = NULL;
+        }
+    }
+} 
 
-// Function Prototypes
+//When a cell is assigned an expression we need to clear all the old precedents of this cell
+void clear_precedents(Sheet* sheet, int rt, int ct)
+{
+    Cell* target_cell = sheet->all_cells[rt][ct];
+    free(target_cell->precedents);
+    target_cell->precedents = NULL;
+    target_cell->count_precedents = 0;
+}
 
-void parseCellName(const char* cellName, int* row, int* col);
-void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols);
-int isArithmeticExpression(const char* expression);
-int isFunction(const char* expression);
-int AssignValue(char *op);
-bool contains_alphabet(const char *str);
+// On updation of value of cell at r,c we need to update all
+// the cells dependent on the cell recently assigned 
+void recalculate_dependents(Sheet* sheet, int r, int c)
+{   if (has_cycle(sheet, sheet->all_cells[r][c]) == false)
+        {Cell** q = (Cell**)malloc(sizeof(Cell*) * sheet->rows * sheet->columns);
+        int front = 0;
+        int rear = 0;
+        Cell* assigned_cell = sheet->all_cells[r][c];
+        //Add the immediate dependents of the assigned cell to the queue
+        for(int i = 0; i < assigned_cell->count_dependents; i++)
+        {
+            q[rear++] = (assigned_cell->dependents)[i];
 
+        }
 
-// Main Function
-// int main() {
-//     int rows, cols;
-//     bool disable_output =0;
-//     scanf("%d", &rows);
-//     scanf("%d", &cols);
+        while(front < rear)
+        {
+            Cell* current_cell = q[front];
+            front = front + 1;
+            if (has_cycle(sheet, current_cell) == false)
+            {
+                
+                calculate_cell_value(sheet, current_cell->r, current_cell->c);
+            }
+            //Add the dependents of the current_cell to the queue
+            for(int i = 0; i < current_cell->count_dependents;i++)
+            {
+                q[rear++] = current_cell->dependents[i];
+            }
+        }
 
-//     if (rows < 1 || rows > 999 || cols < 1 || cols > 18278) {
-//         printf("Error: Invalid spreadsheet dimensions.\n");
-//         return 1;
+        free(q);}
+    else{
+        printf("CHUD GAYE");
+        status = 17;
+    }
+}
+
+// void recalculate_dependents_2(Sheet* sheet, int r, int c) {
+//     if (has_cycle(sheet, sheet->all_cells[r][c]) == 0) {
+//         topological_sort(sheet, sheet->all_cells[r][c]);
+//     } else {
+//         status = 17; // Cycle detected
+//     }
+// }
+
+// void topological_sort(Sheet* sheet, Cell* start_cell) {
+//     Cell** stack = (Cell**)malloc(sizeof(Cell*) * sheet->rows * sheet->columns);
+//     int stack_size = 0;
+//     bool* visited = (bool*)calloc(sheet->rows * sheet->columns, sizeof(bool));
+
+//     dfs_topological_sort(sheet, start_cell, stack, &stack_size, visited);
+
+//     // Recalculate cells in topological order
+//     while (stack_size > 0) {
+//         Cell* cell = stack[--stack_size];
+//         calculate_cell_value(sheet, cell->r, cell->c);
 //     }
 
-//     // Create the spreadsheet
-//     // int** spreadsheet = createSpreadsheet(rows + 1, cols + 1); // Add extra row/col for headers
+//     free(stack);
+//     free(visited);
+// }
 
-//     // Example input loop
-//     char input[256];
-//     while (1) {
-//         printf("> ");
-//         fgets(input, sizeof(input), stdin);
-//         input[strcspn(input, "\n")] = '\0'; // Remove trailing newline
+// void dfs_topological_sort(Sheet* sheet, Cell* cell, Cell** stack, int* stack_size, bool* visited) {
+//     int cell_index = cell->r * sheet->columns + cell->c;
+//     visited[cell_index] = true;
 
-//         if (strcmp(input, "q") == 0) break; // Quit command
-//         parseInput(input, spreadsheet, rows, cols,disable_output);
+//     for (int i = 0; i < cell->count_dependents; i++) {
+//         Cell* dependent = cell->dependents[i];
+//         int dependent_index = dependent->r * sheet->columns + dependent->c;
+//         if (!visited[dependent_index]) {
+//             dfs_topological_sort(sheet, dependent, stack, stack_size, visited);
+//         }
 //     }
 
-//     // Free the spreadsheet memory
-//     // freeSpreadsheet(spreadsheet, rows + 1);
+//     stack[(*stack_size)++] = cell;
+// }
 
+
+// int detect_cycle(Cell* cell, Cell** visited, Cell** recursion_stack, int* visited_count, int* stack_count) {
+//     // Add current cell to visited and recursion stack
+//     visited[*visited_count] = cell;
+//     (*visited_count)++;
+//     recursion_stack[*stack_count] = cell;
+//     (*stack_count)++;
+    
+//     // Check all cells this cell depends on (precedents)
+//     for (int i = 0; i < cell->count_precedents; i++) {
+//         Cell* precedent = cell->precedents[i];
+        
+//         // If the precedent is in the recursion stack, a cycle is found
+//         for (int j = 0; j < *stack_count; j++) {
+//             if (precedent == recursion_stack[j]) {
+//                 return 1;
+//             }
+//         }
+        
+//         // Check if the precedent has already been visited
+//         int already_visited = 0;
+//         for (int j = 0; j < *visited_count; j++) {
+//             if (precedent == visited[j]) {
+//                 already_visited = 1;
+//                 break;
+//             }
+//         }
+        
+//         // If not visited, recursively check for cycles
+//         if (!already_visited) {
+//             if (detect_cycle(precedent, visited, recursion_stack, visited_count, stack_count)) {
+//                 return 1;
+//             }
+//         }
+//     }
+    
+//     // Remove current cell from recursion stack
+//     (*stack_count)--;
 //     return 0;
 // }
 
-// Function Definitions
-
-// Create a dynamic 2D array
-// int** createSpreadsheet(int rows, int cols) {
-//     int** spreadsheet = (int**)malloc(rows * sizeof(int*));
-//     for (int i = 0; i < rows; i++) {
-//         spreadsheet[i] = (int*)calloc(cols, sizeof(int)); // Initialize with 0
-//     }
-//     return spreadsheet;
+// int has_cycle(Sheet* sheet, Cell* start_cell) {
+//     int max_cells = sheet->rows * sheet->columns;
+//     Cell** visited = malloc(max_cells * sizeof(Cell*));
+//     Cell** recursion_stack = malloc(max_cells * sizeof(Cell*));
+//     int visited_count = 0;
+//     int stack_count = 0;
+    
+//     int result = detect_cycle(start_cell, visited, recursion_stack, &visited_count, &stack_count);
+    
+//     free(visited);
+//     free(recursion_stack);
+//     return result;
 // }
 
-// // Free the allocated memory for the spreadsheet
-// void freeSpreadsheet(int** spreadsheet, int rows) {
-//     for (int i = 0; i < rows; i++) {
-//         free(spreadsheet[i]);
-//     }
-//     free(spreadsheet);
-// }
+bool dfs_cycle_detection(Sheet* sheet,Cell* cell, bool* visited, bool* recursion_stack) {
+    int cell_index = cell->r * sheet->columns + cell->c;
 
-// Convert cell name (e.g., A1) to row and column indices
-void parseCellName(const char* cellName, int* row, int* col) {
-    int i = 0;
-    *col = 0;
+    if (recursion_stack[cell_index]) return true; // Cycle detected
+    if (visited[cell_index]) return false; // Already processed
 
-    // Extract column part (letters)
-    while (true) {
-        if (cellName[i]-'0' >=0 &&cellName[i]-'0' <=9){
-            break;
-        }
-        else if (cellName[i]-'A'>=26 || cellName[i]-'A' <0  ){
-            printf("invalidInput");
-        }
-        *col = *col * 26 + (toupper(cellName[i]) - 'A' + 1);
-        i++;
-    }
-    *col-=1;
+    visited[cell_index] = true;
+    recursion_stack[cell_index] = true;
 
-    // Extract row part (numbers)
-    if (!contains_alphabet(cellName+1) && !isArithmeticExpression(cellName+1)){
-    *row = atoi(&cellName[i]);
-    *row-=1;}
-    else{
-        printf("invalidInput");
-    }
-}
-
-// Parse input command
-void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
-    char cellName[16];
-    char expression[128];
-    
-
-    if (sscanf(input, "%[^=]=%s", cellName, expression) == 2) {
-    
-      
-        parseCellName(cellName, &editrow, &editcolumn);
-
-        if (editrow < 0 || editrow > rows || editcolumn < 0 || editcolumn > cols) {                                                                           
-            printf("Error: Invalid cell reference.\n");
-            return;
-        }
-
-        if (isdigit(expression[0]) || expression[0] == '-' || expression[0] == '+'||( isalpha(expression[0]) && !strchr(expression,'(')) ) {
-            if((!contains_alphabet(expression)) && !isArithmeticExpression(expression+1)){
-                count_operands=1;
-                formula=(operand (*)[])malloc(sizeof(operand));
-                (*formula)[0].type_flag = 0; // Constant
-                (*formula)[0].operand_value.constant = atoi(expression);
-                operationID = 1; // Cell assignment with a constant
-            }  
-            else if (contains_alphabet(expression) && !isArithmeticExpression(expression+1))  {
-                int row1,col1;
-                parseCellName(expression, &row1, &col1);
-                printf("---CELL NAMES\n");
-                printf("row = %d, column = %d", row1,col1);
-                printf("---CELL NAMES END\n");
-
-                if (row1 < 0 || row1 > rows || col1 < 0 || col1 > cols) {
-                    printf("Error: Invalid cell reference.\n");
-                    return;
-                }
-                count_operands=1;
-                formula=(operand (*)[])malloc(sizeof(operand));
-                (*formula)[0].type_flag = 1; // Constant
-                (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[row1][col1];
-                operationID = 2; // Cell assignment with a constant
-
-            }  
-            else if ( contains_alphabet(expression) && isArithmeticExpression(expression+1)) {
-                count_operands=2;
-                formula=(operand (*)[])malloc(sizeof(operand)*2);
-                char operand1[16], operand2[16], op;
-                if (!(expression[0]=='+'|| expression[0]=='-')){
-
-                    if (sscanf(expression, "%[^+-*/]%c%s", operand1, &op, operand2) == 3) {
-                        int val1, val2;
-                        if (isalpha(operand1[0])) {
-                            int r1, c1;
-                            parseCellName(operand1, &r1, &c1);
-                            (*formula)[0].type_flag = 1; // Constant
-                            (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
-                            
-                            operationID = AssignValue(&op); // Cell assignment with a constant  
-                            
-                        } else {
-                            (*formula)[0].type_flag = 0; // Constant
-                            (*formula)[0].operand_value.constant = atoi(operand1) ;
-                            operationID = AssignValue(&op); // Cell assignment with a constant
-                        }
-
-                        if (isalpha(operand2[0])) {
-                            int r1, c1;
-                            parseCellName(operand2, &r1, &c1);
-                            (*formula)[1].type_flag = 1; // Constant
-                            (*formula)[1].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
-                            operationID = AssignValue(&op); // Cell assignment with a constant
-                            
-                        } else {
-                            (*formula)[1].type_flag = 0; // Constant
-                            (*formula)[1].operand_value.constant = atoi(operand2) ;
-                            operationID = AssignValue(&op); // Cell assignment with a constant
-                        }
-                      
-                    }
-            }
-            else if((expression[0]=='+'|| expression[0]=='-')){
-                if (sscanf(expression+1, "%[^+-*/]%c%s", operand1, &op, operand2) == 3) {
-                    int val1, val2;
-                    if (isalpha(operand1[0])) {
-                        int r1, c1;
-                        parseCellName(operand1, &r1, &c1);
-                        (*formula)[0].type_flag = 1; // Constant
-                        (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
-                        operationID = AssignValue(&op); // Cell assignment with a constant  // remember here emre ko operation id assignment karna hai with +,-,/,*
-                        
-                    } else {
-                        int value=atoi(operand1);
-                        if(expression[0]=='-'){
-                            value=value*(-1);
-                        }
-                        (*formula)[0].type_flag = 0; // Constant
-                        (*formula)[0].operand_value.constant = value ;
-                        operationID = AssignValue(&op); // Cell assignment with a constant
-                    }
-
-                    if (isalpha(operand2[0])) {
-                        int r1, c1;
-                        parseCellName(operand2, &r1, &c1);
-                        (*formula)[1].type_flag = 1; // Constant
-                        (*formula)[1].operand_value.cell_operand = spreadsheet->all_cells[r1][c1];
-                        operationID = AssignValue(&op); // Cell assignment with a constant
-                        
-                    } else {
-                        (*formula)[1].type_flag = 0; // Constant
-                        (*formula)[1].operand_value.constant = atoi(operand2) ;
-                        operationID = AssignValue(&op); // Cell assignment with a constant
-                    }
-                  
-                }
-           } 
-        } 
-            else if ((!contains_alphabet(expression)) && isArithmeticExpression(expression + 1)){
-                count_operands=2;
-                formula=(operand (*)[])malloc(sizeof(operand)*2);
-                char operand1[16], operand2[16], op;
-                if (!(expression[0]=='+'|| expression[0]=='-')){
-
-                    if (sscanf(expression, "%[^+-*/]%c%s", operand1, &op, operand2) == 3) {
-                        int val1, val2;
-                        if (isalpha(operand1[0])) {
-                            int r1, c1;
-                            parseCellName(operand1, &r1, &c1);
-                            (*formula)[0].type_flag = 1; // Constant
-                            (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
-                            
-                            operationID = AssignValue(&op); // Cell assignment with a constant  
-                            
-                        } else {
-                            (*formula)[0].type_flag = 0; // Constant
-                            (*formula)[0].operand_value.constant = atoi(operand1) ;
-                            operationID = AssignValue(&op); // Cell assignment with a constant
-                        }
-
-                        if (isalpha(operand2[0])) {
-                            int r1, c1;
-                            parseCellName(operand2, &r1, &c1);
-                            (*formula)[1].type_flag = 1; // Constant
-                            (*formula)[1].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
-                            operationID = AssignValue(&op); // Cell assignment with a constant
-                            
-                        } else {
-                            (*formula)[1].type_flag = 0; // Constant
-                            (*formula)[1].operand_value.constant = atoi(operand2) ;
-                            operationID = AssignValue(&op); // Cell assignment with a constant
-                        }
-                      
-                    }
-            }
-            else if((expression[0]=='+'|| expression[0]=='-')){
-                if (sscanf(expression+1, "%[^+-*/]%c%s", operand1, &op, operand2) == 3) {
-                    int val1, val2;
-                    if (isalpha(operand1[0])) {
-                        int r1, c1;
-                        parseCellName(operand1, &r1, &c1);
-                        (*formula)[0].type_flag = 1; // Constant
-                        (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r1][c1] ;
-                        operationID = AssignValue(&op); // Cell assignment with a constant  // remember here emre ko operation id assignment karna hai with +,-,/,*
-                        
-                    } else {
-                        int value=atoi(operand1);
-                        if(expression[0]=='-'){
-                            value=value*(-1);
-                        }
-                        (*formula)[0].type_flag = 0; // Constant
-                        (*formula)[0].operand_value.constant = value ;
-                        operationID = AssignValue(&op); // Cell assignment with a constant
-                    }
-
-                    if (isalpha(operand2[0])) {
-                        int r1, c1;
-                        parseCellName(operand2, &r1, &c1);
-                        (*formula)[1].type_flag = 1; // Constant
-                        (*formula)[1].operand_value.cell_operand = spreadsheet->all_cells[r1][c1];
-                        operationID = AssignValue(&op); // Cell assignment with a constant
-                        
-                    } else {
-                        (*formula)[1].type_flag = 0; // Constant
-                        (*formula)[1].operand_value.constant = atoi(operand2) ;
-                        operationID = AssignValue(&op); // Cell assignment with a constant
-                    }
-                  
-                }
-           } 
-            }
-        } else if (isFunction(expression)) {
-           
-          
-            
-            char functionName[16], range[64];
-            if (sscanf(expression, "%[^()](%[^)])", functionName, range) == 2) {
-                if (strcmp(functionName, "MIN") == 0){
-                    operationID=7;
-                }
-                else if (strcmp(functionName, "MAX") == 0){
-                    operationID=8;
-                }
-                else if (strcmp(functionName, "AVG") == 0){
-                    operationID=9;                
-                }
-                else if (strcmp(functionName, "SUM") == 0){
-                    operationID=10;      
-                }
-                else if (strcmp(functionName, "STDEV") == 0){
-                    operationID=11;  
-                }
-                else if (strcmp(functionName, "SLEEP") == 0){
-                    operationID=12;  
-                }
-                if(strcmp(functionName, "SLEEP") == 0){
-                    count_operands=1;
-                    formula=(operand (*)[])malloc(sizeof(operand));
-                    char extractedvalue[16];
-                    if(sscanf(range, "( %[^)] )", extractedvalue) == 1){
-                    
-                    if (contains_alphabet(extractedvalue)) {
-                        int r3, c3;
-                        parseCellName(extractedvalue, &r3, &c3);
-                        (*formula)[0].type_flag = 1; // Constant
-                        (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r3][c3] ;             
-                    } else {
-                        (*formula)[0].type_flag = 0; // Constant
-                        (*formula)[0].operand_value.constant = atoi(extractedvalue) ;
-                       
-                    }
-                }
-
-                }
-                else{
-                   
-                    int r3, c3, r4, c4;
-                    char start[16], end[16];
-                    if (sscanf(range, "%[^:]:%s", start, end) == 2) {
-                        parseCellName(start, &r3, &c3);
-                        parseCellName(end, &r4, &c4);
-                        if(r3>r3 || c3 > c4){ printf("Invalid range");
-                            return ;}
-                        count_operands=(r4-r3+1)*(c4-c3+1);
-                        formula=(operand (*)[])malloc(sizeof(operand)*(r4-r3+1)*(c4-c3+1));
-                       
-                        int count=0;
-                            for (int i = r3; i <= r4; i++) {
-                                for (int j = c3; j <= c4; j++) {
-                                    (*formula)[count].type_flag = 1; // Constant
-                                    (*formula)[count].operand_value.cell_operand = spreadsheet->all_cells[i][j] ;
-                                    count++;
-                                  
-                                } 
-                            }
-                        
-                        }
-                    }
-                }
-       
-            } else {
-                printf("Error: Invalid function call.\n");
-            }
-        } 
-    
-
-}
-
-// Check if an expression is arithmetic
-int isArithmeticExpression(const char* expression) {
-    return strpbrk(expression, "+-*/") != NULL;
-}
-
-// Check if an expression is a function
-int isFunction(const char* expression) {
-    return strstr(expression, "MIN(") || strstr(expression, "MAX(") ||
-           strstr(expression, "AVG(") || strstr(expression, "SUM(") || strstr(expression, "STDEV(") || strstr(expression, "SLEEP(");
-}
-
-// Perform arithmetic operation
-int AssignValue(char *op){
- if (*op =='+'){return 3;}
- else if (*op =='-'){return 4;}
- else if (*op =='*'){return 5;}
- else if (*op =='/'){return 6;}
- else {
-    printf("Error");
- }
-
-}
-
-
-bool contains_alphabet(const char *str) {
-    if (str == NULL) {
-        return false;
-    }
-
-    while (*str != '\0') {
-        if (isalpha(*str)) {
+    for (int i = 0; i < cell->count_dependents; i++) {
+        if (dfs_cycle_detection(sheet, cell->dependents[i], visited, recursion_stack)) {
             return true;
         }
-        str++;
     }
 
+    recursion_stack[cell_index] = false;
     return false;
 }
 
+bool has_cycle(Sheet* sheet, Cell* start_cell) {
+    int total_cells = sheet->rows * sheet->columns;
+    bool* visited = (bool*)calloc(total_cells, sizeof(bool));
+    bool* recursion_stack = (bool*)calloc(total_cells, sizeof(bool));
 
+    bool cycle_found = dfs_cycle_detection(sheet, start_cell, visited, recursion_stack);
 
+    free(visited);
+    free(recursion_stack);
+    return cycle_found;
+}
+
+void calculate_cell_value(Sheet* sheet, int rt, int ct){
+    Cell* target_cell = sheet->all_cells[rt][ct];
+    switch(target_cell->operation_id)
+    {
+        case 1 :
+                {int value = (*(target_cell->formula))[0].operand_value.constant;
+                target_cell->value = value;
+                break;}
+        case 2 :
+                {int value = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                target_cell->value = value;
+                break;}
+        case 3:
+                {int flag1 = (*(target_cell->formula))[0].type_flag;
+                int flag2 = (*(target_cell->formula))[1].type_flag;
+                int value1, value2;
+                if (flag1 == 0)
+                {
+                    value1 = (*(target_cell->formula))[0].operand_value.constant;
+                }
+                else
+                {
+                    value1 = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                }
+                if (flag2 == 0)
+                {
+                    value2 = (*(target_cell->formula))[1].operand_value.constant;
+                }
+                else
+                {
+                    value2 = (*(target_cell->formula))[1].operand_value.cell_operand->value;
+                }
+                target_cell->value = value1 + value2;
+                break;}
+        case 4:
+                {int flag1 = (*(target_cell->formula))[0].type_flag;
+                int flag2 = (*(target_cell->formula))[1].type_flag;
+                int value1, value2;
+                if (flag1 == 0)
+                {
+                    value1 = (*(target_cell->formula))[0].operand_value.constant;
+                }
+                else
+                {
+                    value1 = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                }
+                if (flag2 == 0)
+                {
+                    value2 = (*(target_cell->formula))[1].operand_value.constant;
+                }
+                else
+                {
+                    value2 = (*(target_cell->formula))[1].operand_value.cell_operand->value;
+                }
+                target_cell->value = value1 - value2;
+                break;}
+    case 5 :
+                {int flag1 = (*(target_cell->formula))[0].type_flag;
+                int flag2 = (*(target_cell->formula))[1].type_flag;
+                int value1, value2;
+                if (flag1 == 0)
+                {
+                    value1 = (*(target_cell->formula))[0].operand_value.constant;
+                }
+                else
+                {
+                    value1 = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                }
+                if (flag2 == 0)
+                {
+                    value2 = (*(target_cell->formula))[1].operand_value.constant;
+                }
+                else
+                {
+                    value2 = (*(target_cell->formula))[1].operand_value.cell_operand->value;
+                }
+                target_cell->value = value1 * value2;
+                break;}
+    case 6 :
+                {int flag1 = (*(target_cell->formula))[0].type_flag;
+                int flag2 = (*(target_cell->formula))[1].type_flag;
+                int value1, value2;
+                if (flag1 == 0)
+                {
+                    value1 = (*(target_cell->formula))[0].operand_value.constant;
+                }
+                else
+                {
+                    value1 = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                }
+                if (flag2 == 0)
+                {
+                    value2 = (*(target_cell->formula))[1].operand_value.constant;
+                }
+                else
+                {
+                    value2 = (*(target_cell->formula))[1].operand_value.cell_operand->value;
+                }
+                target_cell->value = value1 / value2;
+                break;}
+    case 7 :
+                {int values[target_cell->count_operands];
+                int flag;
+                for(int i = 0; i < target_cell->count_operands ; i++)
+                {
+                    flag = (*(target_cell->formula))[i].type_flag;
+                    if (flag == 0)
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.constant;
+                    }
+                    else
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                    }
+                }
+                int temp = values[0];
+                for(int i = 0; i < target_cell->count_operands; i++)
+                {
+                    temp = min(temp, values[i]);
+                }
+                target_cell->value = temp;
+                break;}
+        case 8 : 
+                {
+                int values[target_cell->count_operands];
+                int flag;
+                for(int i = 0; i < target_cell->count_operands ; i++)
+                {
+                    flag = (*(target_cell->formula))[i].type_flag;
+                    if (flag == 0)
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.constant;
+                    }
+                    else
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                    }
+                }
+                int temp = values[0];
+                for(int i = 0; i < target_cell->count_operands; i++)
+                {
+                   temp = max(temp, values[i]);
+                }
+                printf("----CELL MAX VALUE----\n");
+                printf("%d\n",temp);
+                printf("----CELL MAX VALUE END--\n");
+                target_cell->value = temp;
+                break;   
+                }
+        case 9:
+                {int values[target_cell->count_operands];
+                int flag;
+                for(int i = 0; i < target_cell->count_operands ; i++)
+                {
+                    flag = (*(target_cell->formula))[i].type_flag;
+                    if (flag == 0)
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.constant;
+                    }
+                    else
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                    }
+                }
+                int temp = 0;
+                for(int i = 0; i < target_cell->count_operands; i++)
+                {
+                   temp = temp + values[i];
+                }
+                printf("----TEMP VALUE AVG\n");
+                printf("%d\n",temp);
+                printf("----TEMP VALUE AVG END--\n");
+                target_cell->value = temp/(target_cell->count_operands);
+                break;}
+        case 10 :
+                {
+                    int values[target_cell->count_operands];
+                int flag;
+                for(int i = 0; i < target_cell->count_operands ; i++)
+                {
+                    flag = (*(target_cell->formula))[i].type_flag;
+                    if (flag == 0)
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.constant;
+                    }
+                    else
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                    }
+                }
+                int temp = 0;
+                for(int i = 0; i < target_cell->count_operands; i++)
+                {
+                    temp = temp + values[i];
+                }
+                target_cell->value = temp;
+                break;
+                }
+        case 11:
+                {
+                int values[target_cell->count_operands];
+                int flag;
+                for(int i = 0; i < target_cell->count_operands ; i++)
+                {
+                    flag = (*(target_cell->formula))[i].type_flag;
+                    if (flag == 0)
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.constant;
+                    }
+                    else
+                    {
+                        values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
+                    }
+                }
+                // Calculate mean
+                double sum = 0.0;
+                for (int i = 0; i < target_cell->count_operands; i++)
+                {
+                    sum += values[i];
+                }
+                double mean = sum / target_cell->count_operands;
+                
+                // Calculate squared differences and their sum
+                double sq_sum = 0.0;
+                for (int i = 0; i < target_cell->count_operands; i++)
+                {
+                    double diff = values[i] - mean;
+                    sq_sum += diff * diff;
+                }
+                
+                // Calculate standard deviation (using population std deviation formula)
+                double std_dev = sqrt(sq_sum / target_cell->count_operands);
+                
+                // Optionally round or convert to int if needed.
+                target_cell->value = (int)std_dev;
+                break;
+                }
+        case 12:
+                {int seconds;
+                if ((*(target_cell->formula))[0].type_flag == 0) {
+                    seconds = (*(target_cell->formula))[0].operand_value.constant;
+                } else {
+                    seconds = (*(target_cell->formula))[0].operand_value.cell_operand->value;
+                }
+                target_cell->value = handle_sleep(seconds);
+                break;}
+    }
+}
+
+int handle_sleep(int seconds) {
+    sleep(seconds);  
+    return seconds;}
+
+//When a cell is assigned a formula 
+//We need to update its attributes 
+//Remove the old formula and assign the new formula
+//Update number of operands 
+//Remove its old precdents and delete teh cell from the dependent list of its precedents
+//For all the cell in the cells in the formula add the current cell to their dependents list 
+
+void assign_cell(Sheet* sheet, int r, int c,int operation_id, operand (*formula)[],int count_operands)
+{   
+    Cell* target_cell = sheet->all_cells[r][c];
+    Cell** temp_precedents = NULL;
+    int count = target_cell->count_precedents;
+    if (count > 0)
+    {
+        temp_precedents  = (Cell**)malloc(sizeof(Cell*) * count);
+        if (temp_precedents != NULL)
+        {
+            memcpy(temp_precedents, target_cell->precedents, sizeof(Cell*) * (count));
+        }
+    }
+    for(int i = 0; i < target_cell->count_precedents; i++)
+    {
+        Cell* curr = (target_cell->precedents)[i];
+        delete_depedency(sheet,curr->r,curr->c,r,c);
+    }
+    clear_precedents(sheet, r, c);
+    operand (*temp)[] = target_cell->formula;
+    target_cell->formula = formula;
+    int temp_id = target_cell->operation_id;
+    target_cell->operation_id = operation_id;
+    int temp_count = target_cell->count_operands;
+    target_cell->count_operands = count_operands;
+    for(int i = 0; i < count_operands; i++)
+    {
+        if((*formula)[i].type_flag == 1)
+        {
+            Cell* precedent_cell = (*formula)[i].operand_value.cell_operand;
+            add_dependency(sheet,precedent_cell->r,precedent_cell->c,r,c);            
+        }
+    }
+    if (has_cycle(sheet, sheet->all_cells[r][c]) == false)
+    {
+        calculate_cell_value(sheet, r, c);
+        recalculate_dependents(sheet, r, c);
+    }
+    else
+    {
+        target_cell->formula = temp;
+        target_cell->operation_id = temp_id;
+        target_cell->count_operands = temp_count;
+        for(int i = 0; i < count; i++)
+        {
+            Cell* curr = (temp_precedents)[i];
+            add_dependency(sheet,curr->r,curr->c,r,c);
+        }
+
+        for(int i = 0; i < count_operands; i++)
+        {
+            if((*formula)[i].type_flag == 1)
+            {
+                Cell* precedent_cell = (*formula)[i].operand_value.cell_operand;
+                delete_depedency(sheet,precedent_cell->r,precedent_cell->c,r,c);            
+            }
+        }
+
+    }
+    
+    print_formula(sheet, r, c);
+    printf("OPERATION ID : %d\n\n",sheet->all_cells[r][c]->operation_id);
+}
+
+int min(int a, int b)
+{
+    if(a <= b)
+    {
+        return a;
+    }
+    else
+    {
+        return b;
+    }
+}
+
+int max(int a, int b)
+{
+    if(a >=  b)
+    {
+        return a;
+    }
+    else{
+        return b;
+    }
+}
+
+void print_formula(Sheet* sheet, int r, int c)
+{
+    Cell* curr_cell = sheet->all_cells[r][c];
+    printf("--------FORMULA CONTENTS--------\n");
+    for(int i = 0; i < curr_cell->count_operands; i++)
+    {
+        if((*(curr_cell->formula))[i].type_flag == 0)
+        {
+            printf("%d\n",((*(curr_cell->formula))[i].operand_value.constant));
+        }
+        else
+        {
+            printf("row = %d,",(((*(curr_cell->formula))[i].operand_value.cell_operand->r)));
+            printf("column = %d",(((*(curr_cell->formula))[i].operand_value.cell_operand->c)));
+            printf("\n");
+        }
+    }
+    printf("--------FORMULA CONTENTS END --------\n");
+
+}
