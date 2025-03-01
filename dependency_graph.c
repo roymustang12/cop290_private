@@ -166,9 +166,9 @@ void clear_precedents(Sheet* sheet, int rt, int ct)
 
 // On updation of value of cell at r,c we need to update all
 // the cells dependent on the cell recently assigned 
-void recalculate_dependents(Sheet* sheet, int r, int c)
-{   if (has_cycle(sheet, sheet->all_cells[r][c]) == false)
-        {Cell** q = (Cell**)malloc(sizeof(Cell*) * sheet->rows * sheet->columns);
+void recalculate_dependents(Sheet* sheet, int r, int c){
+// {   if (has_cycle(sheet, sheet->all_cells[r][c]) == false)
+        Cell** q = (Cell**)malloc(sizeof(Cell*) * sheet->rows * sheet->columns);
         int front = 0;
         int rear = 0;
         Cell* assigned_cell = sheet->all_cells[r][c];
@@ -183,8 +183,8 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
         {
             Cell* current_cell = q[front];
             front = front + 1;
-            if (has_cycle(sheet, current_cell) == false)
-            {
+            //if (has_cycle(sheet, current_cell) == false)
+            //{
                 if(zero_div_err(sheet, current_cell->r, current_cell->c) == true)
                 {
                     // printf("--ZERO DIV ERROR STARTS\n");
@@ -202,7 +202,7 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
                 else{
                     calculate_cell_value(sheet, current_cell->r, current_cell->c);}
                 
-            }
+            //}
             //Add the dependents of the current_cell to the queue
             for(int i = 0; i < current_cell->count_dependents;i++)
             {
@@ -210,11 +210,11 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
             }
         }
 
-        free(q);}
-    else{
-        // printf("CHUD GAYE");
-        status = 3;
-    }
+        free(q);
+    // else{
+    //     // printf("CHUD GAYE");
+    //     status = 3;
+    // }
 }
 
 // void recalculate_dependents_2(Sheet* sheet, int r, int c) {
