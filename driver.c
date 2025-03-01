@@ -48,13 +48,28 @@ int main(int argc, char* argv[]) {
     sheet = initialise(rows, columns);
 
     char input[256];
-    char status[256] = "ok";
+    char status_str[256];
     double execution_time = 0.0;
     bool print_flag = true;
     
 
     while (1) {
-        printf("%.1f (%s) > ", execution_time, status);
+        if(status==0){
+            strcpy(status_str,"ok");
+        }
+        else if(status==1){
+            strcpy(status_str,"Invalid Input");
+            status=0;
+        }
+        else if(status==2){
+            strcpy(status_str,"zero division");
+            status=0;
+        }
+        else if(status=3){
+            strcpy(status_str,"cyclic dependence");
+            status=0;
+        }
+        printf("%.1f (%s) > ", execution_time, status_str);
         fgets(input, sizeof(input), stdin);
         input[strcspn(input, "\n")] = '\0';
 
@@ -138,7 +153,9 @@ int main(int argc, char* argv[]) {
         //assign_cell(sheet, editrow, editcolumn, operationID, formula, count_operands);
         if((strcmp(input, "enable_output") != 0) || (strcmp(input, "disable_output") != 0) || (strncmp(input, "scroll", 7) != 0))
         {
+            if(status!=1){
             assign_cell(sheet, editrow, editcolumn, operationID, formula, count_operands);
+            }
         }
 
         clock_t end = clock();

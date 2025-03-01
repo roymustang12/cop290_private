@@ -89,7 +89,7 @@ void parseCellName(const char* cellName, int* row, int* col) {
             break;
         }
         else if (cellName[i]-'A'>=26 || cellName[i]-'A'<0  ){
-            printf("invalidInput");
+            status=1;
             break;
         }
         *col = *col * 26 + (toupper(cellName[i]) - 'A' + 1);
@@ -102,7 +102,8 @@ void parseCellName(const char* cellName, int* row, int* col) {
     *row = string_to_int(&cellName[i]);
     *row-=1;}
     else{
-        printf("invalidInput");
+        status=1;
+      
     }
 }
 
@@ -117,8 +118,9 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
       
         parseCellName(cellName, &editrow, &editcolumn);
 
-        if (editrow < 0 || editrow > rows || editcolumn < 0 || editcolumn > cols) {                                                                           
-            printf("Error: Invalid cell reference.\n");
+        if (editrow < 0 || editrow > rows || editcolumn < 0 || editcolumn > cols) { 
+            status=1;                                                                          
+           
             return;
         }
 
@@ -134,15 +136,17 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                 int row1,col1;
                 parseCellName(expression, &row1, &col1);
                 if (row1 < 0 || row1 > rows || col1 < 0 || col1 > cols) {                                                                           
-                    printf("Error: Invalid cell reference.\n");
+                    
+                    status=1;    
                     return;
                 }
-                printf("---CELL NAMES\n");
-                printf("row = %d, column = %d", row1,col1);
-                printf("---CELL NAMES END\n");
+                // printf("---CELL NAMES\n");
+                // printf("row = %d, column = %d", row1,col1);
+                // printf("---CELL NAMES END\n");
 
                 if (row1 < 0 || row1 > rows || col1 < 0 || col1 > cols) {
-                    printf("Error: Invalid cell reference.\n");
+                   
+                    status=1;    
                     return;
                 }
                 count_operands=1;
@@ -164,7 +168,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                             int r1, c1;
                             parseCellName(operand1, &r1, &c1);
                             if (r1 < 0 || r1 > rows || c1 < 0 || c1 > cols) {                                                                           
-                                printf("Error: Invalid cell reference.\n");
+                               
+                                status=1;    
                                 return;
                             }
                             (*formula)[0].type_flag = 1; // Constant
@@ -182,7 +187,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                             int r1, c1;
                             parseCellName(operand2, &r1, &c1);
                             if (r1 < 0 || r1 > rows || c1 < 0 || c1 > cols) {                                                                           
-                                printf("Error: Invalid cell reference.\n");
+                               
+                                status=1;    
                                 return;
                             }
                             (*formula)[1].type_flag = 1; // Constant
@@ -197,12 +203,14 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                       
                     }
                     else{
-                        printf("invalid input");
+                       
+                        status=1;    
                     }
             }
             else if((expression[0]=='+'|| expression[0]=='-')){
                 if(isalpha(expression[1]) || expression[1] == '-' || expression[1]=='+'){
-                    printf("invalid_input");
+                    
+                    status=1;    
                 }
                 if (sscanf(expression+1, "%[^+-*/]%c%s", operand1, &op, operand2) == 3) {
                     int val1, val2;
@@ -210,7 +218,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                         int r1, c1;
                         parseCellName(operand1, &r1, &c1);
                         if (r1 < 0 || r1 > rows || c1 < 0 || c1 > cols) {                                                                           
-                            printf("Error: Invalid cell reference.\n");
+                           
+                            status=1;    
                             return;
                         }
                         (*formula)[0].type_flag = 1; // Constant
@@ -231,7 +240,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                         int r1, c1;
                         parseCellName(operand2, &r1, &c1);
                         if (r1 < 0 || r1 > rows || c1 < 0 || c1 > cols) {                                                                           
-                            printf("Error: Invalid cell reference.\n");
+                            
+                            status=1;    
                             return;
                         }
                         (*formula)[1].type_flag = 1; // Constant
@@ -246,7 +256,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                   
                 }
                 else{
-                    printf("invalid input");
+                    
+                    status=1;    
                 }
            } 
         } 
@@ -262,7 +273,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                         int r1, c1;
                         parseCellName(operand1, &r1, &c1);
                         if (r1 < 0 || r1 > rows || c1 < 0 || c1 > cols) {                                                                           
-                            printf("Error: Invalid cell reference.\n");
+                           
+                            status=1;    
                             return;
                         }
                         (*formula)[0].type_flag = 1; // Constant
@@ -280,7 +292,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                         int r1, c1;
                         parseCellName(operand2, &r1, &c1);
                         if (r1 < 0 || r1 > rows || c1 < 0 || c1 > cols) {                                                                           
-                            printf("Error: Invalid cell reference.\n");
+                           
+                            status=1;    
                             return;
                         }
                         (*formula)[1].type_flag = 1; // Constant
@@ -295,12 +308,14 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                     
                 }
                 else{
-                    printf("invalid input");
+                   
+                    status=1;    
                 }
             }
             else if((expression[0]=='+'|| expression[0]=='-')){
                 if(expression[1]=='+' || expression[0]=='-' ){
-                    printf("invalid input");
+                    // printf("invalid input");
+                    status=1;    
                     return;
                 }
                 if (sscanf(expression+1, "%[^+-*/]%c%s", operand1, &op, operand2) == 3) {
@@ -308,8 +323,9 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                     if (isalpha(operand1[0])) {
                         int r1, c1;
                         parseCellName(operand1, &r1, &c1);
-                        if (editrow < 0 || editrow > rows || editcolumn < 0 || editcolumn > cols) {                                                                           
-                            printf("Error: Invalid cell reference.\n");
+                        if (r1 < 0 || r1 > rows || c1 < 0 || c1 > cols) {                                                                           
+                            // printf("Error: Invalid cell reference.\n");
+                            status=1;    
                             return;
                         }
                         (*formula)[0].type_flag = 1; // Constant
@@ -330,7 +346,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                         int r1, c1;
                         parseCellName(operand2, &r1, &c1);
                         if (r1 < 0 || r1 > rows || c1 < 0 || c1 > cols) {                                                                           
-                            printf("Error: Invalid cell reference.\n");
+                            // printf("Error: Invalid cell reference.\n");
+                            status=1;    
                             return;
                         }
                         (*formula)[1].type_flag = 1; // Constant
@@ -347,7 +364,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
            } 
             }
             else{
-                printf("invalid input");
+                // printf("invalid input");
+                status=1;    
                 return;
             }
         } else if (isFunction(expression)) {
@@ -356,7 +374,8 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
         
             // Check if '(' and ')' exist and in correct order
             if (!openParen || !closeParen || openParen > closeParen - 1) {
-                printf("invalid input");
+                // printf("invalid input");
+                status=1;    
             }
           
             
@@ -384,23 +403,24 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                     count_operands=1;
                     formula=(operand (*)[])malloc(sizeof(operand));
                     char extractedvalue[16];
-                    if(sscanf(range, "(%[^)])", extractedvalue) == 1){
                     
-                    if (contains_alphabet(extractedvalue)) {
+                    
+                    if (contains_alphabet(range)) {
                         int r3, c3;
-                        parseCellName(extractedvalue, &r3, &c3);
+                        parseCellName(range, &r3, &c3);
                         if (r3 < 0 || r3 > rows || c3 < 0 || c3 > cols) {                                                                           
-                            printf("Error: Invalid cell reference.\n");
+                            // printf("Error: Invalid cell reference.\n");
+                            status=1;    
                             return;
                         }
                         (*formula)[0].type_flag = 1; // Constant
                         (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r3][c3] ;             
                     } else {
                         (*formula)[0].type_flag = 0; // Constant
-                        (*formula)[0].operand_value.constant = string_to_int(extractedvalue) ;
+                        (*formula)[0].operand_value.constant = string_to_int(range) ;
                        
                     }
-                }
+                
 
                 }
                 else{
@@ -410,16 +430,20 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                     if (sscanf(range, "%[^:]:%s", start, end) == 2) {
                         parseCellName(start, &r3, &c3);
                         if (r3 < 0 || r3 > rows || c3 < 0 || c3 > cols) {                                                                           
-                            printf("Error: Invalid cell reference.\n");
+                            // printf("Error: Invalid cell reference.\n");
+                            status=1;    
                             return;
                         }
                         parseCellName(end, &r4, &c4);
                         if (r4 < 0 || r4 > rows || c4 < 0 || c4 > cols) {                                                                           
-                            printf("Error: Invalid cell reference.\n");
+                            // printf("Error: Invalid cell reference.\n");
+                            status=1;    
                             return;
                         }
                         
-                        if(r3>r4 || c3 > c4){ printf("Invalid range");
+                        if(r3>r4 || c3 > c4){
+                            status=1;  
+                            // printf("Invalid range");
                             return ;}
                         count_operands=(r4-r3+1)*(c4-c3+1);
                         formula=(operand (*)[])malloc(sizeof(operand)*(r4-r3+1)*(c4-c3+1));
@@ -436,16 +460,19 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                         
                         }
                         else{
-                            printf("invalid input");
+                            // printf("invalid input");
+                            status=1;    
                         }
                     }
                 }
                 else{
-                    printf("invalid input");
+                    // printf("invalid input");
+                    status=1;    
                 }
        
             } else {
-                printf("Error: Invalid function call.\n");
+                // printf("Error: Invalid function call.\n");
+                status=1;    
             }
         } 
     
@@ -470,7 +497,8 @@ int AssignValue(char *op){
  else if (*op =='*'){return 5;}
  else if (*op =='/'){return 6;}
  else {
-    printf("Error");
+    // printf("Error");
+    status=1;
  }
 
 }
@@ -510,7 +538,8 @@ int string_to_int(const char *num_str) {
     // Convert string to integer
     while (num_str[i] != '\0') {
         if(num_str[i]-'0' < 0 || num_str[i] -'0' > 9){
-            printf("invalid_input");
+            // printf("invalid_input");
+            status=1;
             break;
         }
         num = num * 10 + (num_str[i] - '0');  

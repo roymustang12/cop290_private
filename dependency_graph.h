@@ -9,6 +9,7 @@
 #include<stdbool.h>
 // Forward declaration of Cell for use in the union
 struct Cell;
+extern int status;
 
 typedef struct operand {
     int type_flag; 
