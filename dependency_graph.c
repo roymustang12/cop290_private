@@ -70,6 +70,7 @@ void print_formula(Sheet* sheet, int r, int c);
 bool precedent_has_error(Sheet* sheet, int r, int c);
 bool zero_div_err(Sheet* sheet, int r, int c);
 int handle_sleep(int seconds);
+int stdev(int* arr, int n);
 
 Sheet* initialise(int rows, int columns)
 {
@@ -198,8 +199,9 @@ void recalculate_dependents(Sheet* sheet, int r, int c)
                     status = 2;
                     current_cell->is_error = true;
                 }
-                else{                calculate_cell_value(sheet, current_cell->r, current_cell->c);
-                }
+                else{
+                    calculate_cell_value(sheet, current_cell->r, current_cell->c);}
+                
             }
             //Add the dependents of the current_cell to the queue
             for(int i = 0; i < current_cell->count_dependents;i++)
@@ -354,7 +356,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 {int value = (*(target_cell->formula))[0].operand_value.cell_operand->value;
                 bool error = (*(target_cell->formula))[0].operand_value.cell_operand->is_error;
                 
-                if(error == false)
+                if(error = false)
                 {
                     target_cell->value = value;
                     status = 0;
@@ -540,6 +542,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     }
                 }
                 int temp = values[0];
+                bool exit_case = false;
                 for(int i = 0; i < target_cell->count_operands; i++)
                 {
                     temp = min(temp, values[i]);
@@ -547,9 +550,13 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     {
                         target_cell->is_error = true;
                         status = 2;
-
+                        exit_case = true;
                         break;
                     }
+                }
+                if(exit_case)
+                {
+                    break;
                 }
                 target_cell->value = temp;
                 status = 0;
@@ -557,11 +564,13 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 break;}
         case 8 : 
                 {
+                // printf("COUNT OPERANDS : %d\n",target_cell->count_operands);
                 int values[target_cell->count_operands];
                 bool err[target_cell->count_operands];
                 int flag;
                 for(int i = 0; i < target_cell->count_operands ; i++)
                 {
+                    // printf("MAKING VALUES");
                     flag = (*(target_cell->formula))[i].type_flag;
                     if (flag == 0)
                     {
@@ -571,23 +580,38 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     {
                         values[i] = (*(target_cell->formula))[i].operand_value.cell_operand->value;
                         err[i] = (*(target_cell->formula))[i].operand_value.cell_operand->is_error;
+                        // printf("INDIVIDUAL ERROR VALUES");
+                        // printf("%d\n",err[i]);
+                        // printf("---INDIVIDUAL ERROR VALUES ENDS");
                     }
                 }
                 int temp = values[0];
+                bool exit_case = false;
                 for(int i = 0; i < target_cell->count_operands; i++)
                 {
+                    // printf("MAKING TEMP");
                    temp = max(temp, values[i]);
                    if(err[i] == true)
                    {
+                    // printf("ERROR DETECTED");
                     target_cell->is_error = true;
                     status = 2;
-
+                    exit_case = true;
                     break;
                    }
+                }
+                if(exit_case == true)
+                {
+                    break;
                 }
                 // printf("----CELL MAX VALUE----\n");
                 // printf("%d\n",temp);
                 // printf("----CELL MAX VALUE END--\n");
+                // printf("COUNT OPERANDS : %d\n",target_cell->count_operands);
+                // for(int i = 0; i < target_cell->count_operands;i++)
+                // {
+                //     printf("%d\n",err[i]);
+                // }
                 target_cell->value = temp;
                 status = 0;
                 target_cell->is_error = false;
@@ -611,6 +635,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     }
                 }
                 int temp = 0;
+                bool exit_case = false;
                 for(int i = 0; i < target_cell->count_operands; i++)
                 {
                    temp = temp + values[i];
@@ -618,8 +643,13 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                    {
                     target_cell->is_error = true;
                     status = 2;
+                    exit_case = true;
                     break;
                    }
+                }
+                if(exit_case)
+                {
+                    break;
                 }
                 // printf("----TEMP VALUE AVG\n");
                 // printf("%d\n",temp);
@@ -647,6 +677,7 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     }
                 }
                 int temp = 0;
+                bool exit_case = false;
                 for(int i = 0; i < target_cell->count_operands; i++)
                 {
                     temp = temp + values[i];
@@ -654,9 +685,13 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     {
                         target_cell->is_error=true;
                         status = 2;
-
+                        exit_case = true;
                         break;
                     }
+                }
+                if(exit_case)
+                {
+                    break;
                 }
                 target_cell->value = temp;
                 status = 0;
@@ -682,33 +717,53 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     }
                 }
                 // Calculate mean
-                double sum = 0.0;
-                for (int i = 0; i < target_cell->count_operands; i++)
+                // double sum = 0.0;
+                // bool exit_case = false;
+                // for (int i = 0; i < target_cell->count_operands; i++)
+                // {
+                //     sum += values[i];
+                //     if(err[i]==true)
+                //     {
+                //         target_cell->is_error = true;
+                //         status = 2;
+                //         exit_case = true;
+                //         break;
+                //     }
+                // }
+                // if(exit_case)
+                // {
+                //     break;
+                // }
+                // double mean = sum / target_cell->count_operands;
+                
+                // // Calculate squared differences and their sum
+                // double sq_sum = 0.0;
+                // for (int i = 0; i < target_cell->count_operands; i++)
+                // {
+                //     double diff = values[i] - mean;
+                //     sq_sum += diff * diff;
+                // }
+                
+                // // Calculate standard deviation (using population std deviation formula)
+                // double std_dev = sqrt(sq_sum / target_cell->count_operands);
+                
+                // // Optionally round or convert to int if needed.
+                bool exit_case = false;
+                for(int i = 0; i < target_cell->count_operands; i++)
                 {
-                    sum += values[i];
-                    if(err[i]==true)
+                    if(err[i] == true)
                     {
                         target_cell->is_error = true;
                         status = 2;
-
+                        exit_case = true;
                         break;
                     }
                 }
-                double mean = sum / target_cell->count_operands;
-                
-                // Calculate squared differences and their sum
-                double sq_sum = 0.0;
-                for (int i = 0; i < target_cell->count_operands; i++)
+                if(exit_case)
                 {
-                    double diff = values[i] - mean;
-                    sq_sum += diff * diff;
+                    break;
                 }
-                
-                // Calculate standard deviation (using population std deviation formula)
-                double std_dev = sqrt(sq_sum / target_cell->count_operands);
-                
-                // Optionally round or convert to int if needed.
-                target_cell->value = (int)std_dev;
+                target_cell->value = (int)stdev(values, target_cell->count_operands);
                 status = 0;
                 target_cell->is_error = false;
                 break;
@@ -908,4 +963,27 @@ int handle_sleep(int seconds)
     // printf("Sleep completed.\n");
     fflush(stdout);  // Add this line
     return seconds;
+}
+
+int stdev(int* arr, int n) {
+    if (n <= 1) return 0;  // Avoid division by zero
+
+    int sum = 0, mean;
+    double variance = 0.0;
+
+    // Calculate mean
+    for (int i = 0; i < n; i++) {
+        sum += arr[i];
+    }
+    mean = sum / n;
+
+    // Calculate variance
+    for (int i = 0; i < n; i++) {
+        variance += (arr[i] - mean) * (arr[i] - mean);
+    }
+    variance /= n;
+
+    // Return integer standard deviation (rounded)
+    return (int)round(sqrt(variance));
+
 }
