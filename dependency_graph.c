@@ -4,7 +4,10 @@
 #include <unistd.h>
 #include<math.h>
 #include <stdbool.h>
+#include<pthread.h>
 struct Cell;
+
+
 int status = 0;
 typedef struct operand
 {
@@ -50,6 +53,15 @@ typedef struct Spreadsheet
     Cell*** all_cells; //pointer to an array of pointers which point to an array of pointers which refer to Cell
 }Sheet;
 
+typedef struct {
+    Sheet* sheet;
+    int row;
+    int col;
+    int seconds;
+    bool completed;
+    pthread_mutex_t mutex;
+    pthread_cond_t condition;
+} SleepThreadData;
 
 Sheet* initialise(int rows, int columns);
 void add_dependency(Sheet* sheet, int rf, int cf, int rt, int ct);
@@ -69,8 +81,9 @@ int max(int a, int b);
 void print_formula(Sheet* sheet, int r, int c);
 bool precedent_has_error(Sheet* sheet, int r, int c);
 bool zero_div_err(Sheet* sheet, int r, int c);
-int handle_sleep(int seconds);
+int handle_sleep(Sheet* sheet, int row, int col,int seconds);
 int stdev(int* arr, int n);
+void* sleep_thread_function(void* arg);
 
 Sheet* initialise(int rows, int columns)
 {
@@ -166,9 +179,9 @@ void clear_precedents(Sheet* sheet, int rt, int ct)
 
 // On updation of value of cell at r,c we need to update all
 // the cells dependent on the cell recently assigned 
-void recalculate_dependents(Sheet* sheet, int r, int c){
-// {   if (has_cycle(sheet, sheet->all_cells[r][c]) == false)
-        Cell** q = (Cell**)malloc(sizeof(Cell*) * sheet->rows * sheet->columns);
+void recalculate_dependents(Sheet* sheet, int r, int c)
+{   /*if (has_cycle(sheet, sheet->all_cells[r][c]) == false)*/
+        {Cell** q = (Cell**)malloc(sizeof(Cell*) * sheet->rows * sheet->columns);
         int front = 0;
         int rear = 0;
         Cell* assigned_cell = sheet->all_cells[r][c];
@@ -183,26 +196,26 @@ void recalculate_dependents(Sheet* sheet, int r, int c){
         {
             Cell* current_cell = q[front];
             front = front + 1;
-            //if (has_cycle(sheet, current_cell) == false)
-            //{
+            if (has_cycle(sheet, current_cell) == false)
+            {
                 if(zero_div_err(sheet, current_cell->r, current_cell->c) == true)
                 {
-                    // printf("--ZERO DIV ERROR STARTS\n");
-                    // printf("--ZERO DIV ERRRO END");
+                    printf("--ZERO DIV ERROR STARTS\n");
+                    printf("--ZERO DIV ERRRO END");
                     status = 2;
                     current_cell->is_error = true;
                 }
                  else if (precedent_has_error(sheet, current_cell->r, current_cell->c) == true)
                  {
-                    // printf("--PRECEDENT ME ERROR\n");
-                    // printf("--PRECEDENT ME ERROR END");
+                    printf("--PRECEDENT ME ERROR\n");
+                    printf("--PRECEDENT ME ERROR END");
                     status = 2;
                     current_cell->is_error = true;
                 }
                 else{
                     calculate_cell_value(sheet, current_cell->r, current_cell->c);}
                 
-            //}
+            }
             //Add the dependents of the current_cell to the queue
             for(int i = 0; i < current_cell->count_dependents;i++)
             {
@@ -210,9 +223,9 @@ void recalculate_dependents(Sheet* sheet, int r, int c){
             }
         }
 
-        free(q);
+        free(q);}
     // else{
-    //     // printf("CHUD GAYE");
+    //     printf("CHUD GAYE");
     //     status = 3;
     // }
 }
@@ -651,9 +664,9 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                 {
                     break;
                 }
-                // printf("----TEMP VALUE AVG\n");
-                // printf("%d\n",temp);
-                // printf("----TEMP VALUE AVG END--\n");
+                printf("----TEMP VALUE AVG\n");
+                printf("%d\n",temp);
+                printf("----TEMP VALUE AVG END--\n");
                 target_cell->value = temp/(target_cell->count_operands);
                 status = 0;
                 target_cell->is_error = false;
@@ -777,12 +790,12 @@ void calculate_cell_value(Sheet* sheet, int rt, int ct){
                     seconds = (*(target_cell->formula))[0].operand_value.cell_operand->value;
                 }
                 fflush(stdout);
-                // printf("---INSIDE SLEEP----\n");
-                // printf("%d\n INT PRINTED",seconds);
-                target_cell->value = handle_sleep(seconds);
+                printf("---INSIDE SLEEP----\n");
+                printf("%d\n INT PRINTED",seconds);
+                target_cell->value = handle_sleep(sheet,rt,ct,seconds);
                 status = 0;
                 // sleep(seconds);
-                // printf("---OUTSIDE SLEEP----\n");
+                printf("---OUTSIDE SLEEP----\n");
                 target_cell->is_error = false;
                 break;}
     }
@@ -865,8 +878,8 @@ void assign_cell(Sheet* sheet, int r, int c,int operation_id, operand (*formula)
 
     }
     
-    // print_formula(sheet, r, c);
-    // printf("OPERATION ID : %d\n\n",sheet->all_cells[r][c]->operation_id);
+    print_formula(sheet, r, c);
+    printf("OPERATION ID : %d\n\n",sheet->all_cells[r][c]->operation_id);
 }
 
 int min(int a, int b)
@@ -955,15 +968,15 @@ bool zero_div_err(Sheet* sheet, int r, int c)
     return false;
 }
 
-int handle_sleep(int seconds)
-{
-    // printf("Sleeping for %d seconds...\n", seconds);
-    fflush(stdout);  // Add this line
-    sleep(seconds);
-    // printf("Sleep completed.\n");
-    fflush(stdout);  // Add this line
-    return seconds;
-}
+// int handle_sleep(int seconds)
+// {
+//     // printf("Sleeping for %d seconds...\n", seconds);
+//     fflush(stdout);  // Add this line
+//     sleep(seconds);
+//     // printf("Sleep completed.\n");
+//     fflush(stdout);  // Add this line
+//     return seconds;
+// }
 
 int stdev(int* arr, int n) {
     if (n <= 1) return 0;  // Avoid division by zero
@@ -985,5 +998,48 @@ int stdev(int* arr, int n) {
 
     // Return integer standard deviation (rounded)
     return (int)round(sqrt(variance));
+}
 
+void* sleep_thread_function(void* arg) {
+    SleepThreadData* data = (SleepThreadData*)arg;
+    
+    // Sleep for the specified duration
+    sleep(data->seconds);
+    
+    pthread_mutex_lock(&data->mutex);
+    
+    // Update the cell value after sleeping
+    Cell* cell = data->sheet->all_cells[data->row][data->col];
+    cell->value = data->seconds;
+    data->completed = true;
+    
+    // Signal that sleep is completed
+    pthread_cond_signal(&data->condition);
+    pthread_mutex_unlock(&data->mutex);
+    
+    return NULL;
+}
+
+int handle_sleep(Sheet* sheet, int row, int col, int seconds) {
+    // Create thread data
+    SleepThreadData* thread_data = malloc(sizeof(SleepThreadData));
+    thread_data->sheet = sheet;
+    thread_data->row = row;
+    thread_data->col = col;
+    thread_data->seconds = seconds;
+    thread_data->completed = false;
+    
+    // Initialize synchronization primitives
+    pthread_mutex_init(&thread_data->mutex, NULL);
+    pthread_cond_init(&thread_data->condition, NULL);
+    
+    // Create the thread
+    pthread_t thread;
+    pthread_create(&thread, NULL, sleep_thread_function, thread_data);
+    
+    // Detach the thread so we don't need to wait for it
+    pthread_detach(thread);
+    
+    // Return immediately, cell value will be updated when thread completes
+    return seconds;
 }

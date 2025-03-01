@@ -10,7 +10,6 @@
 // Forward declaration of Cell for use in the union
 struct Cell;
 extern int status;
-
 typedef struct operand {
     int type_flag; 
     // type_flag = 0 for integer constants 
@@ -59,10 +58,14 @@ void dfs_topological_sort(Sheet* sheet, Cell* cell, Cell** stack, int* stack_siz
 int detect_cycle(Cell* cell, Cell** visited, Cell** recursion_stack, int visited_count, int stack_count);
 int has_cycle(Sheet* sheet, Cell* start_cell);
 void calculate_cell_value(Sheet* sheet, int rt, int ct);
-int handle_sleep(int seconds);
 void assign_cell(Sheet* sheet, int r, int c, int operation_id, operand (*formula)[], int count_operands);
 int min(int a, int b);
 int max(int a, int b);
 void print_formula(Sheet* sheet, int r, int c);
+bool precedent_has_error(Sheet* sheet, int r, int c);
+bool zero_div_err(Sheet* sheet, int r, int c);
+// int handle_sleep(int seconds);
+int handle_sleep(Sheet* sheet, int row, int col,int seconds);
 int stdev(int* arr, int n);
+void* sleep_thread_function(void* arg);
 #endif // DEPENDENCY_GRAPH_H
