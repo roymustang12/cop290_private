@@ -23,7 +23,7 @@ int display_cell = 0, display_row = 0, display_column = 0; // Display mode count
 // --- Function Declarations (for functions from display.c) ---
 void get_col_label(int col, char *label);
 void display_sheet(Sheet* sheet, int rows, int cols); // Modified to take Sheet*
-void display_single_cell(Sheet* sheet, int row, int col); // Modified
+// void display_single_cell(Sheet* sheet, int row, int col); // Modified
 
 
 
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
     char status_str[256];
     double execution_time = 0.0;
     bool print_flag = true;
-    update_display(sheet, rows, columns);
+    display_sheet(sheet, rows, columns);
     
 
     while (1) {
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
             strcpy(status_str,"zero division");
             status=0;
         }
-        else if(status=3){
+        else if(status==3){
             strcpy(status_str,"cyclic dependence");
             status=0;
         }
@@ -206,20 +206,20 @@ void display_sheet(Sheet* sheet, int rows, int cols) {
     }
 }
 
-void display_single_cell(Sheet* sheet, int row, int col) {
+// void display_single_cell(Sheet* sheet, int row, int col) {
     
-    printf("   ");
-    char label[4] = "";
-    get_col_label(col, label);
-    printf(" %9s\n", label);
-    if(sheet->all_cells[row][col]->is_error==true){
-        char *error="ERR";
-        printf("%3d %9d \n", row + 1,error);
-    }
-    else{
-    printf("%3d %9d\n", row + 1, sheet->all_cells[row][col]->value); // Access value
-    }
-}
+//     printf("   ");
+//     char label[4] = "";
+//     get_col_label(col, label);
+//     printf(" %9s\n", label);
+//     if(sheet->all_cells[row][col]->is_error==true){
+//         char *error="ERR";
+//         printf("%3d %9s \n", row + 1,error);
+//     }
+//     else{
+//     printf("%3d %9d\n", row + 1, sheet->all_cells[row][col]->value); // Access value
+//     }
+// }
 
 
 
