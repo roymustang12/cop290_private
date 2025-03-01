@@ -319,23 +319,27 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                 else if (strcmp(functionName, "SLEEP") == 0){
                     operationID=12;  
                 }
-                if(strcmp(functionName, "SLEEP") == 0){
+                printf("FUNCTION NAME %s\n", functionName);
+                if((strcmp(functionName, "SLEEP")) == 0){
+                    printf("ENTERS IF");
                     count_operands=1;
-                    formula=(operand (*)[])malloc(sizeof(operand));
+                    formula=(operand (*)[])malloc(1 * sizeof(operand));
                     char extractedvalue[16];
-                    if(sscanf(range, "( %[^)] )", extractedvalue) == 1){
-                    
-                    if (contains_alphabet(extractedvalue)) {
+                    printf("RANGE PRINT%s RANGE PRINT ENDS",range);
+                    // printf("--SLEEP CHECK---\n");
+                    // printf("%s",extractedvalue);
+                    // printf("----SLEEP CHECK ENDS\n");
+                    if (contains_alphabet(range)) {
                         int r3, c3;
                         parseCellName(extractedvalue, &r3, &c3);
                         (*formula)[0].type_flag = 1; // Constant
                         (*formula)[0].operand_value.cell_operand = spreadsheet->all_cells[r3][c3] ;             
                     } else {
                         (*formula)[0].type_flag = 0; // Constant
-                        (*formula)[0].operand_value.constant = atoi(extractedvalue) ;
+                        (*formula)[0].operand_value.constant = atoi(range) ;
                        
                     }
-                }
+                
 
                 }
                 else{
@@ -379,6 +383,7 @@ int isArithmeticExpression(const char* expression) {
 
 // Check if an expression is a function
 int isFunction(const char* expression) {
+    printf("IS FUNCTION\n");
     return strstr(expression, "MIN(") || strstr(expression, "MAX(") ||
            strstr(expression, "AVG(") || strstr(expression, "SUM(") || strstr(expression, "STDEV(") || strstr(expression, "SLEEP(");
 }
