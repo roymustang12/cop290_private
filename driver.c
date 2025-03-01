@@ -180,7 +180,7 @@ void get_col_label(int col, char *label) {
 
 // --- Modified display functions to work with the Sheet struct ---
 void display_sheet(Sheet* sheet, int rows, int cols) {
-    system("clear");
+    
     printf("    ");
     for (int c = current_col; c < current_col + VIEWPORT_SIZE && c < cols; c++) {
         char label[4] = "";
@@ -192,23 +192,33 @@ void display_sheet(Sheet* sheet, int rows, int cols) {
     for (int r = current_row; r < current_row + VIEWPORT_SIZE && r < rows; r++) {
         printf("%3d", r + 1);
         for (int c = current_col; c < current_col + VIEWPORT_SIZE && c < cols; c++) {
+            if(sheet->all_cells[r][c]->is_error==true){
+                printf("ERR ");
+            }
+            else{
             printf("%4d", sheet->all_cells[r][c]->value); // Access value through the Sheet struct
+            }
         }
         printf("\n");
     }
 }
 
 void display_single_cell(Sheet* sheet, int row, int col) {
-    system("clear");
+    
     printf("      ");
     char label[4] = "";
     get_col_label(col, label);
     printf(" %s\n", label);
+    if(sheet->all_cells[row][col]->is_error==true){
+        printf("%3d ERR \n", row + 1);
+    }
+    else{
     printf("%3d %4d\n", row + 1, sheet->all_cells[row][col]->value); // Access value
+    }
 }
 
 void display_row_view(Sheet* sheet, int row, int cols) {
-    system("clear");
+   
     printf("   ");
     for (int c = current_col; c < current_col + VIEWPORT_SIZE && c < cols; c++) {
         char label[4] = "";
@@ -217,18 +227,28 @@ void display_row_view(Sheet* sheet, int row, int cols) {
     }
     printf("\n%3d", row + 1);
     for (int c = current_col; c < current_col + VIEWPORT_SIZE && c < cols; c++) {
+        if(sheet->all_cells[row][c]->is_error==true){
+            printf("ERR ");
+        }
+        else{
         printf("%4d", sheet->all_cells[row][c]->value); // Access value
+        }
     }
     printf("\n");
 }
 
 void display_column_view(Sheet* sheet, int col, int rows) {
-    system("clear");
+    
     char label[4] = "";
     get_col_label(col, label);
     printf("       %s\n", label);
     for (int r = current_row; r < current_row + VIEWPORT_SIZE && r < rows; r++) {
+        if(sheet->all_cells[r][col]->is_error==true){
+            printf("ERR ");
+        }
+        else{
         printf("%3d %4d\n", r + 1, sheet->all_cells[r][col]->value); // Access value
+        }
     }
 }
 
