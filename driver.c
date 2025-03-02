@@ -9,7 +9,8 @@
 #include <math.h>
 
 // Include headers from driver.c (assuming these are necessary)
-#include "dependency_graph.h"  // Assuming this is a local header
+#include "dependency_graph_final.h"  // Assuming this is a local header
+#include "cell.h"
 #include "input.h"             // Assuming this is a local header
 
 // --- Definitions and Structures from display.c ---
@@ -60,7 +61,7 @@ int main(int argc, char* argv[]) {
             status=0;
         }
         else if(status==2){
-            strcpy(status_str,"zero division");
+            strcpy(status_str,"ok");
             status=0;
         }
         else if(status==3){

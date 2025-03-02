@@ -2,7 +2,7 @@
 #define INPUT_H
 
 #include <stdbool.h>
-#include "dependency_graph.h"  // for Sheet and operand definitions
+#include "dependency_graph_final.h"  // for Sheet and operand definitions
 
 // Global variables declared in input.c
 extern int operationID;
@@ -18,6 +18,6 @@ int isArithmeticExpression(const char* expression);
 int isFunction(const char* expression);
 int AssignValue(char* op);
 int string_to_int(const char *num_str);
-int count_occurrences(char ch, const char *str);
+int count_occurrences(char ch, const char *str) ;
 
 #endif // INPUT_H
