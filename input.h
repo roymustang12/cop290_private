@@ -18,5 +18,6 @@ int isArithmeticExpression(const char* expression);
 int isFunction(const char* expression);
 int AssignValue(char* op);
 int string_to_int(const char *num_str);
+int count_occurrences(char ch, const char *str);
 
 #endif // INPUT_H

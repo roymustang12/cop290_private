@@ -25,6 +25,7 @@ int isFunction(const char* expression);
 int AssignValue(char *op);
 bool contains_alphabet(const char *str);
 int string_to_int(const char *num_str);
+int count_occurrences(char ch, const char *str);
 
 
 // Main Function
@@ -377,6 +378,11 @@ void parseInput(const char* input,Sheet* spreadsheet , int rows, int cols){
                 // printf("invalid input");
                 status=1;    
             }
+            int open=count_occurrences('(',expression);
+            int close=count_occurrences(')',expression);
+            if(open!=close){
+                status=1;
+            }
           
             
             char functionName[16], range[64];
@@ -549,5 +555,15 @@ int string_to_int(const char *num_str) {
     return num * sign;  // Apply sign and return result
 }
 
+int count_occurrences(char ch, const char *str) {
+    int count = 0;
+    while (*str) {
+        if (*str == ch) {
+            count++;
+        }
+        str++;
+    }
+    return count;
+}
 
 
